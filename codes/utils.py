@@ -20,8 +20,8 @@ class log_metrics(Callback):
     def on_epoch_end(self, epoch, logs):
 
         if logs is not None:
-            y_pred = self.model.predict(self.valX, verbose=0)
-            pred = np.argmax(y_pred)
+            predY = self.model.predict(self.valX, verbose=0)
+            predY = np.argmax(predY, axis=-1)
 
             ## Enter metric calculations per patient here
 
