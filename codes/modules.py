@@ -67,7 +67,7 @@ class Scale(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-def res_subsam(input_tensor, filters, kernel_size, subsam):
+def res_subsam(input_tensor, filters=[64,64], kernel_size=16, subsam=2, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
     eps = 1.1e-5
     nb_filter1, nb_filter2 = filters
     x = BatchNormalization(epsilon=eps, axis=-1)(input_tensor)
@@ -91,7 +91,7 @@ def res_subsam(input_tensor, filters, kernel_size, subsam):
     return x
 
 
-def res_nosub(input_tensor, filters, kernel_size):
+def res_nosub(input_tensor, filters=[64,64], kernel_size=16, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
     eps = 1.1e-5
     nb_filter1, nb_filter2 = filters
     x = BatchNormalization(epsilon=eps, axis=-1)(input_tensor)
@@ -110,7 +110,7 @@ def res_nosub(input_tensor, filters, kernel_size):
     return x
 
 
-def res_first(input_tensor, filters, kernel_size):
+def res_first(input_tensor, filters=[64,64], kernel_size=16, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
     eps = 1.1e-5
     nb_filter1, nb_filter2 = filters
     x = Conv1D(filters=nb_filter1, kernel_initializer=initializers.he_normal(seed=1), kernel_size=kernel_size,
