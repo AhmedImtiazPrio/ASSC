@@ -22,7 +22,7 @@ sys.setrecursionlimit(3000)
 
 class Scale(Layer):
     '''Custom Layer for ResNet used for BatchNormalization.
-    
+
     Learns a set of weights and biases used for scaling the input data.
     the output consists simply in an element-wise multiplication of the input
     and a sum of a set of constants:
@@ -101,12 +101,12 @@ def res_subsam(input_tensor,filters,kernel_size,subsam):
 	x = Scale(axis=-1)(x)
 	x = Activation('relu')(x)
 	x = Dropout(rate=dropout_rate,seed=1)(x)
-	x = Conv1D(filters=nb_filter2,kernel_initializer=initializers.he_normal(seed=1),kernel_size=kernel_size,padding='same',use_bias=bias,kernel_constraint=max_norm(maxnorm))(x) ##	
+	x = Conv1D(filters=nb_filter2,kernel_initializer=initializers.he_normal(seed=1),kernel_size=kernel_size,padding='same',use_bias=bias,kernel_constraint=max_norm(maxnorm))(x) ##
 	short = Conv1D(filters=nb_filter2,kernel_size=kernel_size,padding='same',use_bias=bias,kernel_constraint=max_norm(maxnorm),kernel_initializer=initializers.he_normal(seed=1))(input_tensor) ##
 	short = MaxPooling1D(pool_size=subsam)(short)
 	x = add([x,short])
 	return x
-	
+
 def res_nosub(input_tensor,filters,kernel_size):
 	eps= 1.1e-5
 	nb_filter1, nb_filter2 = filters
@@ -119,10 +119,10 @@ def res_nosub(input_tensor,filters,kernel_size):
 	x = Scale(axis=-1)(x)
 	x = Activation('relu')(x)
 	x = Dropout(rate=dropout_rate,seed=1)(x)
-	x = Conv1D(filters=nb_filter2,kernel_initializer=initializers.he_normal(seed=1),kernel_size=kernel_size,padding='same',use_bias=bias,kernel_constraint=max_norm(maxnorm))(x) ##	
+	x = Conv1D(filters=nb_filter2,kernel_initializer=initializers.he_normal(seed=1),kernel_size=kernel_size,padding='same',use_bias=bias,kernel_constraint=max_norm(maxnorm))(x) ##
 	x = add([x,input_tensor])
 	return x
-	
+
 def res_first(input_tensor,filters,kernel_size):
 	eps=1.1e-5
 	nb_filter1, nb_filter2 = filters
@@ -131,10 +131,10 @@ def res_first(input_tensor,filters,kernel_size):
 	x = Scale(axis=-1)(x)
 	x = Activation('relu')(x)
 	x = Dropout(rate=dropout_rate,seed=1)(x)
-	x = Conv1D(filters=nb_filter2,kernel_initializer=initializers.he_normal(seed=1),kernel_size=kernel_size,padding='same',use_bias=bias,kernel_constraint=max_norm(maxnorm))(x) ##	
+	x = Conv1D(filters=nb_filter2,kernel_initializer=initializers.he_normal(seed=1),kernel_size=kernel_size,padding='same',use_bias=bias,kernel_constraint=max_norm(maxnorm))(x) ##
 	x = add([x,input_tensor])
 	return x
-	
+
 	
 def irfanet(eeg_length,num_classes, kernel_size, load_path):
 	eps = 1.1e-5
@@ -197,7 +197,7 @@ if __name__ == '__main__':
 	file_name = 'eog_rk_new_notrans_234rejects_relabeled.mat'
 	eeg_length = 3000
 	kernel_size=16
-	save_dir = os.path.join(os.getcwd(),'saved_models_keras') #os.getcwd() Return a string representing the current working directory
+	save_dir = os.path.join(os.getcwd(),'saved_models_keras')
 	model_name = 'keras_1Dconvnet_eog_trained_model.h5'
 	bias=True
 	maxnorm=4.
