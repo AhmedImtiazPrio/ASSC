@@ -11,6 +11,13 @@ def compute_weight(Y, classes):
     return class_weights
 
 class log_metrics(Callback):
+    '''Custom callback to add new elements to epoch end logs and tensorflow graphs
+
+        Callback called on_epoch_end to calcualte validations set metrics using meta
+        information (Patient ID, channel ID, etc). End of epoch metrics are added to
+        `logs` which are later used by the tensorboard callback.
+        log_metrics should be specified in the callback list before tensorboard callback
+        '''
 
     def __init__(self, valX, valY, patID, **kwargs):
         self.valY = valY
