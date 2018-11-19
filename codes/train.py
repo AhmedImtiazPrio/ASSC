@@ -13,45 +13,7 @@ import argparse
 import pandas as pd
 import tables
 
-def irfanet(eeg_length, num_classes, kernel_size, load_path):
-    eps = 1.1e-5
-
-    EEG_input = Input(shape=(eeg_length, 1))
-    x = Conv1D(filters=64, kernel_size=kernel_size, kernel_initializer=initializers.he_normal(seed=1), padding='same',
-               use_bias=bias, kernel_constraint=max_norm(maxnorm))(EEG_input)  ##
-    x = BatchNormalization(epsilon=eps, axis=-1)(x)
-    x = Scale(axis=-1)(x)
-    x = Activation('relu')(x)
-
-    x = res_first(x, filters=[64, 64], kernel_size=kernel_size)
-    x = res_subsam(x, filters=[64, 64], kernel_size=kernel_size, subsam=2)
-    x = res_nosub(x, filters=[64, 64], kernel_size=kernel_size)
-    x = res_subsam(x, filters=[64, 128], kernel_size=kernel_size, subsam=2)
-    x = res_nosub(x, filters=[128, 128], kernel_size=kernel_size)
-    x = res_subsam(x, filters=[128, 128], kernel_size=kernel_size, subsam=2)
-    x = res_nosub(x, filters=[128, 128], kernel_size=kernel_size)
-    x = res_subsam(x, filters=[128, 192], kernel_size=kernel_size, subsam=2)
-    x = res_nosub(x, filters=[192, 192], kernel_size=kernel_size)
-    x = res_subsam(x, filters=[192, 192], kernel_size=kernel_size, subsam=2)
-    x = res_nosub(x, filters=[192, 192], kernel_size=kernel_size)
-    x = res_subsam(x, filters=[192, 256], kernel_size=kernel_size, subsam=2)
-    x = res_nosub(x, filters=[256, 256], kernel_size=kernel_size)
-    x = res_subsam(x, filters=[256, 256], kernel_size=kernel_size, subsam=2)
-    x = res_nosub(x, filters=[256, 256], kernel_size=kernel_size)
-    x = res_subsam(x, filters=[256, 512], kernel_size=kernel_size, subsam=2)
-    x = BatchNormalization(epsilon=eps, axis=-1)(x)
-    x = Scale(axis=-1)(x)
-    x = Activation('relu')(x)
-    x = Flatten()(x)
-    x = Dense(num_classes, activation='softmax', kernel_initializer=initializers.he_normal(seed=1),
-              kernel_constraint=max_norm(maxnorm), use_bias=bias)(x)  ##
-
-    model = Model(EEG_input, x)
-    # model.load_weights(filepath=load_path,by_name=False) ### LOAD WEIGHTS
-    adm = Adam(lr=lr, decay=lr_decay)
-    model.compile(optimizer=adm, loss='categorical_crossentropy', metrics=['accuracy'])
-    return model
-
+from modules import *
 
 if __name__ == '__main__':
 
