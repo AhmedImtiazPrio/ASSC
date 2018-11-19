@@ -73,7 +73,7 @@ if __name__ == '__main__':
     y_test = to_categorical(y__test, num_classes)
     print('y_train shape:', y_train.shape)
 
-    x = irfanet(eeg_length=eeg_length, num_classes=num_classes, kernel_size=kernel_size, load_path=load_path)
+    x = eegnet(eeg_length=eeg_length, num_classes=num_classes, kernel_size=kernel_size, load_path=load_path)
     x = Flatten()(x)
     x = Dense(num_classes, activation='softmax', kernel_initializer=initializers.he_normal(seed=1),
               kernel_constraint=max_norm(maxnorm), use_bias=bias)(x)  ##
