@@ -1,4 +1,4 @@
-from keras.layers import Conv1D, MaxPooling1D, Activation, add, Dropout
+from keras.layers import Conv1D, MaxPooling1D, Activation, add, Dropout, Input
 from keras.layers.normalization import BatchNormalization
 from keras import initializers
 from keras.engine import Layer, InputSpec
@@ -67,7 +67,7 @@ class Scale(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-def res_subsam(input_tensor, filters=[64,64], kernel_size=16, subsam=2, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
+def res_subsam(input_tensor, filters=(64,64), kernel_size=16, subsam=2, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
     eps = 1.1e-5
     nb_filter1, nb_filter2 = filters
     x = BatchNormalization(epsilon=eps, axis=-1)(input_tensor)
@@ -91,7 +91,7 @@ def res_subsam(input_tensor, filters=[64,64], kernel_size=16, subsam=2, dropout_
     return x
 
 
-def res_nosub(input_tensor, filters=[64,64], kernel_size=16, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
+def res_nosub(input_tensor, filters=(64,64), kernel_size=16, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
     eps = 1.1e-5
     nb_filter1, nb_filter2 = filters
     x = BatchNormalization(epsilon=eps, axis=-1)(input_tensor)
@@ -110,7 +110,7 @@ def res_nosub(input_tensor, filters=[64,64], kernel_size=16, dropout_rate=0.2, b
     return x
 
 
-def res_first(input_tensor, filters=[64,64], kernel_size=16, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
+def res_first(input_tensor, filters=(64,64), kernel_size=16, dropout_rate=0.2, bias=False, maxnorm=4., **kwargs):
     eps = 1.1e-5
     nb_filter1, nb_filter2 = filters
     x = Conv1D(filters=nb_filter1, kernel_initializer=initializers.he_normal(seed=1), kernel_size=kernel_size,
@@ -122,4 +122,37 @@ def res_first(input_tensor, filters=[64,64], kernel_size=16, dropout_rate=0.2, b
     x = Conv1D(filters=nb_filter2, kernel_initializer=initializers.he_normal(seed=1), kernel_size=kernel_size,
                padding='same', use_bias=bias, kernel_constraint=max_norm(maxnorm))(x)  ##
     x = add([x, input_tensor])
+    return x
+
+
+def irfanet(eeg_length=3000, kernel_size=16, bias=False, maxnorm=4., **kwargs):
+    eps = 1.1e-5
+
+    EEG_input = Input(shape=(eeg_length,1))
+    x = Conv1D(filters=64, kernel_size=kernel_size, kernel_initializer=initializers.he_normal(seed=1), padding='same',
+               use_bias=bias, kernel_constraint=max_norm(maxnorm))(EEG_input)  ##
+    x = BatchNormalization(epsilon=eps, axis=-1)(x)
+    x = Scale(axis=-1)(x)
+    x = Activation('relu')(x)
+
+    x = res_first(x, filters=[64, 64], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[64, 64], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[64, 64], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[64, 128], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[128, 128], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[128, 128], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[128, 128], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[128, 192], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[192, 192], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[192, 192], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[192, 192], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[192, 256], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[256, 256], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[256, 256], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[256, 256], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[256, 512], kernel_size=kernel_size, subsam=2)
+    x = BatchNormalization(epsilon=eps, axis=-1)(x)
+    x = Scale(axis=-1)(x)
+    x = Activation('relu')(x)
+
     return x

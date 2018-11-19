@@ -13,10 +13,6 @@ import argparse
 import pandas as pd
 import tables
 
-from modules import res_subsam
-from AudioDataGenerator import AudioDataGenerator
-
-
 def irfanet(eeg_length, num_classes, kernel_size, load_path):
     eps = 1.1e-5
 
@@ -115,8 +111,15 @@ if __name__ == '__main__':
     y_test = to_categorical(y__test, num_classes)
     print('y_train shape:', y_train.shape)
 
-    model = irfanet(eeg_length=eeg_length, num_classes=num_classes, kernel_size=kernel_size, load_path=load_path)
-    # plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=False, rankdir='TB')
+    x = irfanet(eeg_length=eeg_length, num_classes=num_classes, kernel_size=kernel_size, load_path=load_path)
+    x = Flatten()(x)
+    x = Dense(num_classes, activation='softmax', kernel_initializer=initializers.he_normal(seed=1),
+              kernel_constraint=max_norm(maxnorm), use_bias=bias)(x)  ##
+
+    model = Model(EEG_input, x)
+    # model.load_weights(filepath=load_path,by_name=False) ### LOAD WEIGHTS
+    adm = Adam(lr=lr, decay=lr_decay)
+    model.compile(optimizer=adm, loss='categorical_crossentropy', metrics=['accuracy'])
 
     # setting up checkpoint save directory/ log names
     checkpoint_path = os.path.join(os.path.join(os.getcwd(), 'tmp'), str(date.today()))
