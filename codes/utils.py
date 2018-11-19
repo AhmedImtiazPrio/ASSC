@@ -23,6 +23,7 @@ class log_metrics(Callback):
         self.valY = valY
         self.valX = valX
         self.patID = patID
+        super(log_metrics,self).__init__(**kwargs)
 
     def on_epoch_end(self, epoch, logs):
 
