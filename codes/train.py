@@ -101,8 +101,10 @@ if __name__ == '__main__':
     log_name = foldname + ' ' + str(datetime.now())
     if not os.path.exists(model_dir + log_name):
         os.makedirs(model_dir + log_name)
-    checkpoint_name = model_dir + log_name + "/" + 'weights.{epoch:04d}-{val_acc:.4f}.hdf5'
-    results_file = os.path.join(os.getcwd(),'..','results.csv')
+    checkpoint_name = os.path.join(model_dir,log_name,'weights.{epoch:04d}-{val_acc:.4f}.hdf5')
+    results_file = os.path.join(os.getcwd(), '..', 'results.csv')
+
+    # checkpoint_name = model_dir + log_name + "/" + 'weights.{epoch:04d}-{val_acc:.4f}.hdf5'
 
 
     # turn this into params dictionary file
