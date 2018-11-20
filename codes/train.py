@@ -98,15 +98,14 @@ if __name__ == '__main__':
                                                                                         # folder for each log_name
     results_file = os.path.join(os.getcwd(), '..', 'results.csv')
 
-    params={
+    params={               # still not universal
 
-        'num_classes':6,  ### automate number of classes depends on data fold
+        'num_classes':6,  ### automate; number of classes depends on data fold
         'batch_size':batch_size,
         'epochs':epochs,
         'foldname':foldname,
         'random_seed':random_seed,
         'load_path':load_path,
-        # 'class_weight':class_weight,
         'shuffle':True,
         'initial_epoch':initial_epoch,
         'verbose':verbose,
@@ -137,7 +136,7 @@ if __name__ == '__main__':
 
     ########### Create Model ################
 
-    top_model = eegnet(**params)  # might have bugs
+    top_model = eegnet(**params)  # might have bugs; sub modules need kwargs integration
     x = Flatten()(top_model)
     x = Dense(params['num_classes'], activation='softmax', kernel_initializer=initializers.he_normal(seed=random_seed),
               kernel_constraint=max_norm(params['maxnorm']), use_bias=True)(x)  ##
