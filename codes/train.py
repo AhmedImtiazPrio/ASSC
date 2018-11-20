@@ -10,8 +10,7 @@ from tensorflow import set_random_seed
 set_random_seed(1)
 from datetime import datetime
 import argparse
-import pandas as pd
-import tables
+import os
 
 from modules import *
 from utils import *
@@ -21,7 +20,7 @@ if __name__ == '__main__':
     # parse arguments
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument("data",
+    parser.add_argument("fold",
                         help="matfile to use")
     parser.add_argument("--seed", type=int,
                         help="Random seed")
@@ -39,8 +38,8 @@ if __name__ == '__main__':
                         help="Add comments to the log files")
 
     args = parser.parse_args()
-    print("%s selected" % (args.data))
-    foldname = args.data
+    print("%s selected" % (args.fold))
+    foldname = args.fold
 
     if args.seed:  # if random seed is specified
         print("Random seed specified as %d" % (args.seed))
@@ -87,6 +86,24 @@ if __name__ == '__main__':
         comment = args.comment
     else:
         comment = None
+
+    foldname = foldname
+    random_seed = random_seed
+    load_path = load_path
+    initial_epoch = initial_epoch
+    epochs = epochs
+    batch_size = batch_size
+    verbose = verbose
+
+    model_dir = os.path.join(os.getcwd(),'..','models')
+    fold_dir = os.path.join(os.getcwd(),'..','data')
+    log_dir = os.path.join(os.getcwd(),'..','logs')
+    log_name = foldname + ' ' + str(datetime.now())
+    if not os.path.exists(model_dir + log_name):
+        os.makedirs(model_dir + log_name)
+    checkpoint_name = model_dir + log_name + "/" + 'weights.{epoch:04d}-{val_acc:.4f}.hdf5'
+    results_file = os.path.join(os.getcwd(),'..','results.csv')
+
 
     # turn this into params dictionary file
 
