@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 from keras.utils import to_categorical, plot_model
 from keras.layers import Flatten, Dense
 from keras.models import Model
-from keras.optimizers import Adam
+from keras.optimizers import Adamax as opt
 from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger
 
 from modules import *
@@ -91,7 +91,7 @@ if __name__ == '__main__':
     model_dir = os.path.join(os.getcwd(),'..','models')
     fold_dir = os.path.join(os.getcwd(),'..','data')
     log_dir = os.path.join(os.getcwd(),'..','logs')
-    log_name = foldname + ' ' + str(datetime.now())
+    log_name = foldname + '_' + str(datetime.now())
     if not os.path.exists(model_dir + log_name):
         os.makedirs(model_dir + log_name)
     checkpoint_name = os.path.join(model_dir,log_name,'weights.{epoch:04d}-{val_acc:.4f}.hdf5') # make sure separate
@@ -126,11 +126,11 @@ if __name__ == '__main__':
 
     ########### Data Prep ################
 
-    mat_cont = tables.open_file(os.path.join(fold_dir,foldname+'.mat'))
+    mat_cont = tables.open_file(os.path.join(fold_dir,foldname))
     X = mat_cont['data']
     Y = mat_cont['hyp']
     patID = mat_cont['patID']
-    trainX, valX, trainY, valY = train_test_split(X, Y, test_size=0.2, random_state=random_seed)
+    trainX, valX, trainY, valY = train_test_split(X, Y, test_size=0.2, random_state=random_seed) # patID split koro bacha
     trainY = to_categorical(trainY, params['num_classes'])
     valY = to_categorical(valY, params['num_classes'])
 
@@ -149,8 +149,7 @@ if __name__ == '__main__':
     model_json = model.to_json()
     with open(os.path.join(model_dir,log_name,'model.json'), "w") as json_file:
         json_file.write(model_json)
-    adm = Adam(**params)  # might have bugs
-    model.compile(optimizer=adm, loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=opt(**params), loss='categorical_crossentropy', metrics=['accuracy'])
 
     ####### Define Callbacks #######
 
@@ -176,7 +175,6 @@ if __name__ == '__main__':
     try:
 
         model.fit(trainX, trainY,
-
                 verbose=2,
                 validation_data=(valX, valY),
                 callbacks=[modelcheckpnt,

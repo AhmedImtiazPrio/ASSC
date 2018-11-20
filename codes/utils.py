@@ -14,7 +14,7 @@ def compute_weight(Y, classes):
 def results_log(filepath, params):
 
     df = pd.read_csv(filepath)
-    df1 = pd.read_csv()
+    df1 = pd.read_csv() #training.csv
 
     ## logging pipeline here ##
 
