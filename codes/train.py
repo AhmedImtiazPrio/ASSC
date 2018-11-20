@@ -11,13 +11,18 @@ set_random_seed(1)
 from datetime import datetime
 import argparse
 import os
+import tables
+from sklearn.model_selection import train_test_split
+from keras.utils import to_categorical, plot_model
+from keras.layers import Flatten, Dense
+from keras.models import Model
+from keras.optimizers import Adam
+from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger
 
 from modules import *
 from utils import *
 
 if __name__ == '__main__':
-
-    # parse arguments
 
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("fold",
@@ -78,10 +83,6 @@ if __name__ == '__main__':
         print("Verbosity level %d" % (verbose))
     else:
         verbose = 2
-    if args.classweights:
-        addweights = True
-    else:
-        addweights = False
     if args.comment:
         comment = args.comment
     else:
@@ -93,22 +94,20 @@ if __name__ == '__main__':
     log_name = foldname + ' ' + str(datetime.now())
     if not os.path.exists(model_dir + log_name):
         os.makedirs(model_dir + log_name)
-    checkpoint_name = os.path.join(model_dir,log_name,'weights.{epoch:04d}-{val_acc:.4f}.hdf5')
+    checkpoint_name = os.path.join(model_dir,log_name,'weights.{epoch:04d}-{val_acc:.4f}.hdf5') # make sure separate
+                                                                                        # folder for each log_name
     results_file = os.path.join(os.getcwd(), '..', 'results.csv')
-
-    # checkpoint_name = model_dir + log_name + "/" + 'weights.{epoch:04d}-{val_acc:.4f}.hdf5'
-
-
-    # turn this into params dictionary file
 
     params={
 
-        'num_classes':6,
+        'num_classes':6,  ### automate number of classes depends on data fold
         'batch_size':batch_size,
         'epochs':epochs,
         'foldname':foldname,
         'random_seed':random_seed,
         'load_path':load_path,
+        # 'class_weight':class_weight,
+        'shuffle':True,
         'initial_epoch':initial_epoch,
         'verbose':verbose,
         'eeg_length':3000,
@@ -125,111 +124,64 @@ if __name__ == '__main__':
         'lr_decay':1e-5,
 
     }
-    num_classes = 6
-    batch_size = 32  # 8
-    epochs = 200
-    file_name = 'eog_rk_new_notrans_234rejects_relabeled.mat'
-    eeg_length = 3000
-    kernel_size = 16
-    save_dir = os.path.join(os.getcwd(), 'saved_models_keras')
-    model_name = 'keras_1Dconvnet_eog_trained_model.h5'
-    bias = True
-    maxnorm = 4.
-    # load_path='/home/prio/Keras/thesis/irfanet-34/tmp/2017-10-29/4weights.20-0.8196.hdf5'
-    load_path = None
-    run_idx = 3
-    dropout_rate = 0.2
-    initial_epoch = 0
-    lr = .0001
-    lr_decay = 1e-5
-    lr_reduce_factor = 0.5
-    patience = 4  # for reduceLR
-    cooldown = 0  # for reduceLR
 
-    #############################################################################################################################
+    ########### Data Prep ################
 
-    # use scipy.io to convert .mat to numpy array
-    mat_cont = loadmat(file_name)
-    X = mat_cont['dat']
+    mat_cont = tables.open_file(os.path.join(fold_dir,foldname+'.mat'))
+    X = mat_cont['data']
     Y = mat_cont['hyp']
-    Y = Y - 1
+    patID = mat_cont['patID']
+    trainX, valX, trainY, valY = train_test_split(X, Y, test_size=0.2, random_state=random_seed)
+    trainY = to_categorical(trainY, params['num_classes'])
+    valY = to_categorical(valY, params['num_classes'])
 
-    # Use random splitting into training and test
-    x_train, x_test, y__train, y__test = train_test_split(X, Y, test_size=0.2, random_state=1)
-    x_train = np.reshape(x_train, (x_train.shape[0], 3000, 1))
-    x_test = np.reshape(x_test, (x_test.shape[0], 3000, 1))
+    ########### Create Model ################
 
-    # Use alternate epochs
-    # A = np.reshape(X,(47237,3000,1))
-    # x_test = A[::2,:,:]
-    # y_test = Y[::2]
-    # x_train = A[2:X.shape[0]:2,:,:]
-    # y_train = Y[2:Y.shape[0]:2]
+    top_model = eegnet(**params)  # might have bugs
+    x = Flatten()(top_model)
+    x = Dense(params['num_classes'], activation='softmax', kernel_initializer=initializers.he_normal(seed=random_seed),
+              kernel_constraint=max_norm(params['maxnorm']), use_bias=True)(x)  ##
 
-    print('x_train shape:', x_train.shape)
-    print(x_train.shape[0], 'train samples')
-    print(x_test.shape[0], 'test samples')
-    print('Training Distribution')
-    print(np.bincount(y__train[:, 0]))
-    print('Testing Distribution')
-    print(np.bincount(y__test[:, 0]))
-
-    y_train = to_categorical(y__train, num_classes)
-    y_test = to_categorical(y__test, num_classes)
-    print('y_train shape:', y_train.shape)
-
-    x = eegnet(eeg_length=eeg_length, num_classes=num_classes, kernel_size=kernel_size, load_path=load_path)
-    x = Flatten()(x)
-    x = Dense(num_classes, activation='softmax', kernel_initializer=initializers.he_normal(seed=1),
-              kernel_constraint=max_norm(maxnorm), use_bias=bias)(x)  ##
-
-    model = Model(EEG_input, x)
-    # model.load_weights(filepath=load_path,by_name=False) ### LOAD WEIGHTS
-    adm = Adam(lr=lr, decay=lr_decay)
+    model = Model(top_model.input, x)
+    model.summary()
+    if load_path:  # If path for loading model was specified
+        model.load_weights(filepath=load_path, by_name=False)
+    plot_model(model, to_file='model.png', show_shapes=True)
+    model_json = model.to_json()
+    with open(os.path.join(model_dir,log_name,'model.json'), "w") as json_file:
+        json_file.write(model_json)
+    adm = Adam(**params)  # might have bugs
     model.compile(optimizer=adm, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    # setting up checkpoint save directory/ log names
-    checkpoint_path = os.path.join(os.path.join(os.getcwd(), 'tmp'), str(date.today()))
-    if not os.path.isdir(checkpoint_path):
-        os.makedirs(checkpoint_path)
-    checkpoint_name = checkpoint_path + '/' + str(run_idx) + 'weights.{epoch:02d}-{val_acc:.4f}.hdf5'
-    log_name = 'logs' + str(date.today()) + '_' + str(run_idx)
+    ####### Define Callbacks ######
 
-    # Callbacks
-    mdlchk = ModelCheckpoint(filepath=checkpoint_name, monitor='val_acc', save_best_only=False, mode='max')
-    tensbd = TensorBoard(log_dir='./logs/' + log_name, batch_size=batch_size, write_images=True)
-    csv_logger = CSVLogger('./logs/training_' + log_name + '.log', separator=',', append=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=lr_reduce_factor, patience=patience, min_lr=0.00001,
-                                  verbose=1, cooldown=cooldown)
-    lr_ = LearningRateScheduler(lr_schedule)
-    lr_print = show_lr()
+    modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
+                                    monitor='val_acc', save_best_only=False, mode='max')
+    tensbd = TensorBoard(log_dir=os.path.join(log_dir,log_name),
+                         batch_size=batch_size, histogram_freq=3,
+                         write_grads=True,
+                         # embeddings_freq=99,
+                         # embeddings_layer_names=embedding_layer_names,
+                         # embeddings_data=x_val,
+                         # embeddings_metadata=metadata_file,
+                         write_images=False)
+    csv_logger = CSVLogger(os.path.join(log_dir,log_name,'training.csv'))
 
-    # class_weight={0:3.3359,1:0.3368,2:3.0813,3:2.7868,4:0.7300,5:1.4757}
-    class_weight = compute_weight(y__train, np.unique(y__train))
-    print(class_weight)
+    if args.classweights:
+        params['class_weight'] = compute_weight(trainY, np.unique(trainY))
+    else:
+        params['class_weight'] = dict(zip(np.r_[0:params['num_classes']],np.ones(params['num_classes']))) # weighted 1
 
-    model.fit(x_train, y_train,
-              batch_size=batch_size,
-              epochs=epochs,
-              shuffle=True,
-              verbose=2,
-              validation_data=(x_test, y_test),
-              callbacks=[mdlchk, tensbd, csv_logger, lr_print],  # reduce_lr],
-              initial_epoch=initial_epoch
-              )
-    # class_weight=class_weight
-    # )
+    try:
 
-    pred = model.predict(x_test, batch_size=batch_size, verbose=1)
-    print(pred)
+        model.fit(trainX, trainY,
 
-    score = log_loss(y__test, pred)
-    score_ = accuracy_score(y__test, pred)
-    print(score)
-    print(score_)
-
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-    model_path = os.path.join(save_dir, model_name)
-    model.save(model_path)
-    print('Saved trained model at %s ' % model_path)
+                verbose=2,
+                validation_data=(valX, valY),
+                callbacks=[modelcheckpnt,
+                         log_metrics(valX, valY, patID),
+                         tensbd, csv_logger],
+                  **params)  # might have bugs
+        results_log(results_file,params)
+    except KeyboardInterrupt:
+        results_log(results_file, params)

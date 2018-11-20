@@ -126,6 +126,7 @@ def res_first(input_tensor, filters=(64,64), kernel_size=16, dropout_rate=0.2, b
 
 
 def eegnet(eeg_length=3000, kernel_size=16, bias=False, maxnorm=4., **kwargs):
+
     '''
     Top model for the CNN
     Add details of module in docstring
