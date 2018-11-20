@@ -87,14 +87,6 @@ if __name__ == '__main__':
     else:
         comment = None
 
-    foldname = foldname
-    random_seed = random_seed
-    load_path = load_path
-    initial_epoch = initial_epoch
-    epochs = epochs
-    batch_size = batch_size
-    verbose = verbose
-
     model_dir = os.path.join(os.getcwd(),'..','models')
     fold_dir = os.path.join(os.getcwd(),'..','data')
     log_dir = os.path.join(os.getcwd(),'..','logs')
@@ -109,6 +101,30 @@ if __name__ == '__main__':
 
     # turn this into params dictionary file
 
+    params={
+
+        'num_classes':6,
+        'batch_size':batch_size,
+        'epochs':epochs,
+        'foldname':foldname,
+        'random_seed':random_seed,
+        'load_path':load_path,
+        'initial_epoch':initial_epoch,
+        'verbose':verbose,
+        'eeg_length':3000,
+        'kernel_size':16,
+        'bias':True,
+        'maxnorm':4.,
+        'dropout_rate':0.5,
+        'dropout_rate_dense':0.,
+        'padding':'valid',
+        'activation_function':'relu',
+        'subsam':2,
+        'trainable':True,
+        'lr':.0001,
+        'lr_decay':1e-5,
+
+    }
     num_classes = 6
     batch_size = 32  # 8
     epochs = 200
