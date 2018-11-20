@@ -185,5 +185,7 @@ if __name__ == '__main__':
                          tensbd, csv_logger],
                   **params)  # might have bugs
         results_log(results_file,params)
+
     except KeyboardInterrupt:
+
         results_log(results_file, params)
