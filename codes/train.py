@@ -14,11 +14,81 @@ import pandas as pd
 import tables
 
 from modules import *
+from utils import *
 
 if __name__ == '__main__':
 
-    ############################################################################################################################
-    #### INITIALIZE!!
+    # parse arguments
+
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument("data",
+                        help="matfile to use")
+    parser.add_argument("--seed", type=int,
+                        help="Random seed")
+    parser.add_argument("--loadmodel",
+                        help="load previous model checkpoint for retraining (Enter absolute path)")
+    parser.add_argument("--epochs", type=int,
+                        help="Number of epochs for training")
+    parser.add_argument("--batch_size", type=int,
+                        help="number of minibatches to take during each backwardpass preferably multiple of 2")
+    parser.add_argument("--verbose", type=int, choices=[1, 2],
+                        help="Verbosity mode. 1 = progress bar, 2 = one line per epoch (default 2)")
+    parser.add_argument("--classweights", type=bool,
+                        help="if True, class weights are added")
+    parser.add_argument("--comment",
+                        help="Add comments to the log files")
+
+    args = parser.parse_args()
+    print("%s selected" % (args.data))
+    foldname = args.data
+
+    if args.seed:  # if random seed is specified
+        print("Random seed specified as %d" % (args.seed))
+        random_seed = args.seed
+    else:
+        random_seed = 1
+
+    if args.loadmodel:  # If a previously trained model is loaded for retraining
+        load_path = args.loadmodel  #### path to model to be loaded
+
+        idx = load_path.find("weights")
+        initial_epoch = int(load_path[idx + 8:idx + 8 + 4])
+
+        print("%s model loaded\nInitial epoch is %d" % (args.loadmodel, initial_epoch))
+    else:
+        print("no model specified, using initializer to initialize weights")
+        initial_epoch = 0
+        load_path = False
+
+    if args.epochs:  # if number of training epochs is specified
+        print("Training for %d epochs" % (args.epochs))
+        epochs = args.epochs
+    else:
+        epochs = 200
+        print("Training for %d epochs" % (epochs))
+
+    if args.batch_size:  # if batch_size is specified
+        print("Training with %d samples per minibatch" % (args.batch_size))
+        batch_size = args.batch_size
+    else:
+        batch_size = 1024
+        print("Training with %d minibatches" % (batch_size))
+
+    if args.verbose:
+        verbose = args.verbose
+        print("Verbosity level %d" % (verbose))
+    else:
+        verbose = 2
+    if args.classweights:
+        addweights = True
+    else:
+        addweights = False
+    if args.comment:
+        comment = args.comment
+    else:
+        comment = None
+
+    # turn this into params dictionary file
 
     num_classes = 6
     batch_size = 32  # 8
