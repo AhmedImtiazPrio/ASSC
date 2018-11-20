@@ -153,7 +153,7 @@ if __name__ == '__main__':
     adm = Adam(**params)  # might have bugs
     model.compile(optimizer=adm, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    ####### Define Callbacks ######
+    ####### Define Callbacks #######
 
     modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
                                     monitor='val_acc', save_best_only=False, mode='max')
@@ -171,6 +171,8 @@ if __name__ == '__main__':
         params['class_weight'] = compute_weight(trainY, np.unique(trainY))
     else:
         params['class_weight'] = dict(zip(np.r_[0:params['num_classes']],np.ones(params['num_classes']))) # weighted 1
+
+    ####### Train #######
 
     try:
 
