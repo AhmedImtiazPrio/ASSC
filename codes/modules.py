@@ -2,9 +2,12 @@ from keras.layers import Conv1D, MaxPooling1D, Activation, add, Dropout, Input
 from keras.layers.normalization import BatchNormalization
 from keras import initializers
 from keras.engine import Layer, InputSpec
+from keras.models import Model
+#from keras.engine import input_layer
 from keras import backend as K
 from keras.constraints import max_norm
-
+#from input_layer import Input
+import tensorflow as tf
 class Scale(Layer):
     '''Custom Layer for ResNet used for BatchNormalization.
 
@@ -134,12 +137,14 @@ def eegnet(eeg_length=3000, kernel_size=16, bias=False, maxnorm=4., **kwargs):
 
     eps = 1.1e-5
 
+    #inputs = K.placeholder(shape=(batch_size, eeg_length,1))
+    #x = Input(dtype= 'float32', shape=(eeg_length,1))
     EEG_input = Input(shape=(eeg_length,1))
     x = Conv1D(filters=64, kernel_size=kernel_size, kernel_initializer=initializers.he_normal(seed=1), padding='same',
                use_bias=bias, kernel_constraint=max_norm(maxnorm))(EEG_input)  ##
     x = BatchNormalization(epsilon=eps, axis=-1)(x)
     x = Scale(axis=-1)(x)
-    x = Activation('relu')(x)
+    x = Activation('relu')(x)  # ব্যাচ নরমালাইজ করা ভার্শন টা কে নিয়ে স্কেলের মধ্যে ঢুকানো 
 
     x = res_first(x, filters=[64, 64], kernel_size=kernel_size)
     x = res_subsam(x, filters=[64, 64], kernel_size=kernel_size, subsam=2)
@@ -160,5 +165,6 @@ def eegnet(eeg_length=3000, kernel_size=16, bias=False, maxnorm=4., **kwargs):
     x = BatchNormalization(epsilon=eps, axis=-1)(x)
     x = Scale(axis=-1)(x)
     x = Activation('relu')(x)
-
+    x = Model(EEG_input,x)
+    # tf.keras.backend.eval(x)
     return x
