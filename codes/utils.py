@@ -48,10 +48,10 @@ def compute_weight(Y, classes):
 
 def patientSplitter(randomIDfile,df2,split_portion):
     import pandas as pd
-    
+
     df1 = pd.read_csv(randomIDfile,header=None)
     split_portion_numer=int(split_portion*61)
-    
+
     train_pat_list = [int(each) for each in df1.iloc[:split_portion_numer].values]
     test_pat_list = [int(each) for each in df1.iloc[split_portion_numer:].values]
     print(test_pat_list)
@@ -61,7 +61,7 @@ def patientSplitter(randomIDfile,df2,split_portion):
         df3.append(df2[df2.patID == pat_ID].values)
         print(pat_ID)
     for pat_ID in test_pat_list:
-        df4.append(df2[df2.patID == pat_ID].values) 
+        df4.append(df2[df2.patID == pat_ID].values)
         print(pat_ID)
     del df2
     df3 = pd.np.vstack(df3)
@@ -72,9 +72,9 @@ def patientSplitter(randomIDfile,df2,split_portion):
     Y_test= df4[:,3000]
     pat_train=df3[:, 3002:3003]
     pat_test= df4[:, 3002:3003]
-    
+
     del pd
-    return X_train,X_test,Y_train,Y_test,pat_train,pat_test	
+    return X_train,X_test,Y_train,Y_test,pat_train,pat_test
 
 
     #### রেজাল্ট এর লগিং এখানে। একটা কল ব্যাক দিয়ে সিএসভি ফাইলে গিয়ে ডাম্প করে আসতে হবে।
@@ -88,7 +88,7 @@ def patientSplitter(randomIDfile,df2,split_portion):
 def results_log(results_file, log_dir, log_name, params):
     df = pd.read_csv(results_file)
     df1 = pd.read_csv(os.path.join(log_dir, log_name, 'training.csv').replace('\\', '/'))
-    terminalrow = df1['']
+    #terminalrow = df1['']
 
     # new_entry = {'Filename': '*'+params['log_name'],
     #              'num_classes': params['num_classes'],  ### automate; number of classes depends on data fold
@@ -116,11 +116,19 @@ def results_log(results_file, log_dir, log_name, params):
     #
     #             }
 
-    new_entry - params
+    new_entry = params
+
+    df1 = df1.sort_values('val_acc')
+    a = df1.head(1)
+    b = a.to_dict()
+    c = {**new_entry, **b}
+    new_entry = c
+
     index, _ = df.shape
-    new_entry = pd.DataFrame(new_entry, index = [index])
+    new_entry = pd.DataFrame(new_entry)
+            #    new_entry = pd.DataFrame(new_entry, index = [index])
     print(new_entry)
-    #df2 = pd.concat([df, new_entry], axis= 0)
+    df2 = pd.concat([df, new_entry], axis= 0)
     df2.to_csv(results_file, index=False)
     #df2.tail()
     print("Saving to results.csv")
@@ -153,7 +161,7 @@ class log_metrics( Callback):
         self.valY = np.argmax(valY, axis=-1)
         self.valX = valX
         self.patID = patID
-        super(log_metrics,self).__init__(**kwargs) #### এই সুপার টা এই ফাংশনের পার্ট না হয়ে মেইন ক্লাসের পার্ট হয়ে গেল। 
+        super(log_metrics,self).__init__(**kwargs) #### এই সুপার টা এই ফাংশনের পার্ট না হয়ে মেইন ক্লাসের পার্ট হয়ে গেল।
 
 
 

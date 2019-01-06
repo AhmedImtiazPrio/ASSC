@@ -150,7 +150,7 @@ if __name__ == '__main__':
         'num_classes': 7,  ### automate; number of classes depends on data fold
         'batch_size': batch_size,
         'epochs': epochs,
-        'foldname': foldname,
+        'aafoldname': foldname,
         'random_seed': random_seed,
         'load_path': load_path,
         'shuffle': True,
@@ -291,12 +291,12 @@ if __name__ == '__main__':
     print("model dot fit: Started")
     try:
 
-        model.fit(trainX, trainY, validation_data=(valX, valY), callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val), csv_logger], batch_size=128, epochs=1)  # might have bugs
+        model.fit(trainX, trainY, validation_data=(valX, valY), callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val), csv_logger], batch_size=128, epochs=2)  # might have bugs
         #plot_model(moodel, fo_file=log_dir + log_name + '/model.png', show_shapes=True)
         results_log(results_file= results_file, log_dir=log_dir, log_name= log_name, params=params)
 
     except KeyboardInterrupt:
         print("Keyboard Interrupt")
-        results_log(results_file, params)
+        #results_log(results_file, params)
         #plot_model(moodel, fo_file=log_dir + log_name + '/model.png', show_shapes=True)
         results_log(results_file= results_file, log_dir=log_dir, log_name= log_name, params=params)
