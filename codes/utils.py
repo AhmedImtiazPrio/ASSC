@@ -116,22 +116,34 @@ def results_log(results_file, log_dir, log_name, params):
     #
     #             }
 
-    new_entry = params
-
-    df1 = df1.sort_values('val_acc')
-    a = df1.head(1)
-    b = a.to_dict()
-    c = {**new_entry, **b}
-    new_entry = c
-
-    index, _ = df.shape
-    new_entry = pd.DataFrame(new_entry)
-            #    new_entry = pd.DataFrame(new_entry, index = [index])
-    print(new_entry)
-    df2 = pd.concat([df, new_entry], axis= 0)
+    new_entry= params
+    new_entry.pop('class_weight')
+    new_entry.pop('lr')
+    a = df1.head()
+    a = a.join(pd.DataFrame(params, index=[0]))
+    df2 = pd.concat([df, a], axis=0)
     df2.to_csv(results_file, index=False)
-    #df2.tail()
-    print("Saving to results.csv")
+    print("saving results to csv")
+
+
+    # print("params loaded")
+    # new_entry = params
+    # print(params)
+    # new_entry.pop('classWeights')
+    # print("params printed")
+    #
+    # df1 = df1.sort_values('val_acc')
+    # a = df1.head(1)
+    # df2 = pd.concat([df, a], axis= 0)
+    # df2.to_csv(results_file, index=False)
+    # #df2.tail()
+    # print("Saving to results.csv")
+    #
+    #
+
+
+
+
     # df = pd.read_csv(filepath)
     # df1 = pd.read_csv('trin.csv') #training.csv
 
