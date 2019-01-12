@@ -167,6 +167,7 @@ if __name__ == '__main__':
         'trainable': True,
         'lr': .0001,
         'lr_decay': 1e-5,
+        'PerPatientAccuracy' : 0,
     }
 
 
@@ -180,7 +181,7 @@ if __name__ == '__main__':
     # Elegant one
     # df2 = pd.read_csv( (os.path.join(fold_dir,foldname),header=None)
     # কামলা কাউন্টারপার্ট
-    df2 = pd.read_csv('E:/SleepWell/ASSC-master/data/purifiedallDataChannel2.csv', header=None)
+    df2 = pd.read_csv('E:/SleepWell/ASSC/data/purifiedallDataChannel3.csv', header=None)
     df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
 
     trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDs.csv', df2, 0.7)
@@ -304,7 +305,7 @@ if __name__ == '__main__':
     print("model dot fit: Started")
     try:
 
-        model.fit(trainX, trainY, validation_data=(valX, valY), callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val), csv_logger, tensbd], batch_size=128, epochs=1)  # might have bugs
+        model.fit(trainX, trainY, validation_data=(valX, valY), callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val), csv_logger, tensbd], batch_size=128, epochs=params['epochs'])  # might have bugs
         #plot_model(moodel, fo_file=log_dir + log_name + '/model.png', show_shapes=True)
         results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
 

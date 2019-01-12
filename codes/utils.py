@@ -18,6 +18,7 @@ from keras.models import Model
 from keras.optimizers import Adamax as opt
 from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger, Callback
 import pandas as pd
+from sklearn.metrics import accuracy_score
 
 from modules import *
 #from utils import *
@@ -88,33 +89,6 @@ def patientSplitter(randomIDfile,df2,split_portion):
 def results_log(results_file, log_dir, log_name, params):
     df = pd.read_csv(results_file)
     df1 = pd.read_csv(os.path.join(log_dir, log_name, 'training.csv').replace('\\', '/'))
-    #terminalrow = df1['']
-
-    # new_entry = {'Filename': '*'+params['log_name'],
-    #              'num_classes': params['num_classes'],  ### automate; number of classes depends on data fold
-    #              'batch_size': params['batch_size'],
-    #              'epochs': params['epochs'],
-    #              'foldname': params['foldname'],
-    #              'random_seed': params['random_seed'],
-    #              'load_path': params['load_path'],
-    #              #'shuffle' : params['shuffle'],
-    #              'initial_epoch': params['initial_epoch'],
-    #              'eeg_length' : params['eeg_length'],
-    #              'kernel_size': 16,
-    #              #'bias': params['bias'],
-    #              'maxnorm': params['maxnorm'],
-    #              'dropout_rate': params['dropout_rate'],
-    #              'dropout_rate_dense': params['dropout_rate_dense'],
-    #              'padding': params['padding'],
-    #              'activation_function': params['activation_function'],
-    #              'subsam': params['subsam'],
-    #              #'trainable' : params['trainable'],
-    #              'learningRate': params['lr'],
-    #              'learningRateDecay': params['lr_decay'],
-    #              'classWeights' : params['class_weight'],
-    #              'numberofClasses' : params['num_classes'],
-    #
-    #             }
 
     new_entry= params
     new_entry.pop('class_weight')
@@ -124,34 +98,6 @@ def results_log(results_file, log_dir, log_name, params):
     df2 = pd.concat([df, a], axis=0)
     df2.to_csv(results_file, index=False)
     print("saving results to csv")
-
-
-    # print("params loaded")
-    # new_entry = params
-    # print(params)
-    # new_entry.pop('classWeights')
-    # print("params printed")
-    #
-    # df1 = df1.sort_values('val_acc')
-    # a = df1.head(1)
-    # df2 = pd.concat([df, a], axis= 0)
-    # df2.to_csv(results_file, index=False)
-    # #df2.tail()
-    # print("Saving to results.csv")
-    #
-    #
-
-
-
-
-    # df = pd.read_csv(filepath)
-    # df1 = pd.read_csv('trin.csv') #training.csv
-
-    #logging pipeline here ##
-
-
-    #print()
-
 
     ########## লগ ম্যাট্রিক্স বানানো।  -_-  #################
 
@@ -175,19 +121,21 @@ class log_metrics( Callback):
         self.patID = patID
         super(log_metrics,self).__init__(**kwargs) #### এই সুপার টা এই ফাংশনের পার্ট না হয়ে মেইন ক্লাসের পার্ট হয়ে গেল।
 
-
-
     def on_epoch_end(self, epoch, logs):
 
         if logs is not None:
-            # predY = self.model.predict(self.valX, verbose=0)
-            # predY = np.argmax(predY, axis=-1)
 
+            predY = self.model.predict(self.valX, verbose=0)
+            # predY = np.argmax(predY, axis=-1)
+            patAcc = []
+            for pat in np.unique(patID).astype(int):
+                mask = patID == pat
+                patAcc.append(accuracy_score(valY[mask], predY[mask]))
+            params['PerPatientAccuracy'] = np.mean(patAcc)
             # Enter metric calculations per patient here
             #
             # acc = .9
             # logs['acc']  = acc
-
             ### Learning Rate logging for Adam ###
 
             lr = self.model.optimizer.lr
