@@ -29,9 +29,6 @@ import xgboost as xgb
 
 if __name__ == '__main__':
 
-    ############ পারসার এই ক্যাচাল এইখান থেকে শুরু #######################
-
-    ########## পারসার ডেফিনিশন ########
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("fold",
                         help="csvfile to use")
@@ -53,8 +50,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print("%s selected" % (args.fold))
     foldname = args.fold
-
-    ###### পারসার থেকে নিয়ে ভ্যারিয়েবল গুলাতে মান বসানো, মান না থাকলে ডিফল্ট কত হবে সেইগুলাও বসান ########
 
     if args.seed:  # if random seed is specified
         print("Random seed specified as %d" % (args.seed))
@@ -98,24 +93,6 @@ if __name__ == '__main__':
     else:
         comment = None
 
-    ######## এই পর্যন্ত শুধু পারসার থেকে মান নিয়ে ভ্যারিয়েবল গুলা তে বসেছে। ###############
-
-    ### ডিরেক্টরি ডিফাইন করা জেনারেলাইজ করে ####
-
-    # model_dir = os.path.join(os.getcwd(), '..', 'models').replace('\\', '/')
-    # fold_dir = os.path.join(os.getcwd(), '..', 'data').replace('\\', '/')
-    # log_dir = os.path.join(os.getcwd(), '..', 'logs').replace('\\', '/')
-    # log_name = foldname + '_' + str(datetime.now()).replace(' ', '').replace('\\', '/')
-    # print(os.path.join(model_dir, log_name))
-    # if not os.path.exists(os.path.join(model_dir, log_name)):
-    #     new_dir = (os.path.join(os.getcwd(), '..', 'models', log_name)).replace('\\', '/').replace(':', '')
-    #     print(new_dir)
-    #     os.makedirs(new_dir)
-    # checkpoint_name = os.path.join(model_dir, log_name,
-    #                                'weights.{epoch04d}-{val_acc.4f}.hdf5'.replace(':', ''))  # make sure separate
-    # # folder for each log_name
-    # results_file = os.path.join(os.getcwd().replace('\\', '/'), '..', 'results.csv')
-
     model_dir = os.path.join(os.getcwd(),'..','models').replace('\\', '/')
     fold_dir = os.path.join(os.getcwd(),'..','data').replace('\\', '/')
     log_dir = os.path.join(os.getcwd(),'..','logs').replace('\\', '/')
@@ -128,26 +105,13 @@ if __name__ == '__main__':
         new_dir = os.path.join(log_dir, log_name).replace('\\', '/')
         print(new_dir)
         os.makedirs(new_dir)
-    checkpoint_name = os.path.join(model_dir,log_name,'weights.{epoch:04d}-{val_acc:.4f}.hdf5').replace('\\', '/') # make sure separate
-                                                                                        # folder for each log_name
+    checkpoint_name = os.path.join(model_dir,log_name,'weights.{epoch:04d}-{val_acc:.4f}.hdf5').replace('\\', '/')
+
     results_file = os.path.join(os.getcwd(), '..', 'results.csv').replace('\\','/')
 
-    ##### ডিরেক্টরি ক্যাচাল শেষ #####
+    params = {
 
-
-
-
-
-
-
-
-    ##### ডিরেক্টরি ক্যাচাল শেষ #####
-
-    ##### প্যারামস হচ্ছে একটা লিস্ট যেটা নেটওয়ার্ক কে খাওয়াতে হবে। এই লিস্টে সব হাইপারপ্যারামিটার থেকে শুরু করে ফোল্ডারের নাম সব থাকবে। এটা শিখলাম। কাজ করানো টা শিখতে হবে ################
-
-    params = {  # still not universal
-
-        'num_classes': 7,  ### automate; number of classes depends on data fold
+        'num_classes': 7,
         'batch_size': batch_size,
         'epochs': epochs,
         'aafoldname': foldname,
@@ -169,30 +133,11 @@ if __name__ == '__main__':
         'lr_decay': 1e-5,
     }
 
-
-
-
-
-    ########### Data Prep ################
-
-    # mat_cont = tables.open_file(os.path.join(fold_dir,foldname))
-
-    # Elegant one
-    # df2 = pd.read_csv( (os.path.join(fold_dir,foldname),header=None)
-    # কামলা কাউন্টারপার্ট
     df2 = pd.read_csv('E:/SleepWell/ASSC/data/purifiedallDataChannel3.csv', header=None)
     df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
 
     trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDs.csv', df2, 0.7)
     print("Dataframe has been loaded")
-
-
-
-
-    #####এই স্প্লিটিং করা যাবে না। লিখতে হবে। পেশেন্ট আইডি এর উপর বেইজ করে স্প্লিট করতে হবে।
-
-    ######পেশেন্ট আইডী বেজ করে স্প্লিট করা নিয়ে কাজ করতে হবে এইখানে। ১৫ জনের ডাটা যাবে ট্রেনিং এ, বাকি দের ডেটা যাবে ভ্যালিডেশনে। ##############
-
     dummytrainY = trainY-1
     dummytrainY = dummytrainY.astype(int)
 
@@ -202,105 +147,40 @@ if __name__ == '__main__':
     trainX = np.expand_dims(trainX,axis=-1)
     valX = np.expand_dims(valX, axis=-1)
 
-
-    ########### Create Model ################
-    ###### মডেলের শুরুর দিকের লেয়ার গুলা মডুলস নামের পাই ফাইলে আছে। এখানে শুধু ডেন্স লেয়ার গুলা আলাদা করে জইন করা হচ্ছে, কারণ এইগুলা তেই চেঞ্জ আসবে।  ######
-    ##### হাইপারপ্যারামিটার গুলা ট্রেইন করার জন্য শুধু হাইপার প্যারামিটার গুলা সম্ভলিত অংশ আলাদা করে লেখা হচ্ছে। ##################
-    # শিখলাম ব্যপারটা। #
-
     eeg_length = 3000
     kernel_size= 16
     bias = False
     maxnorm=4
-
-
     eps = 1.1e-5
 
-
-
     K.clear_session()
-    # প্রথমে ইইজি নেট টা কে তৈরি করা, সব প্যারামিটার তাকে বলে দিয়ে ###
-    top_model = eegnet(**params)  # might have bugs; sub modules need kwargs integration
-    # top_model = eegnet()
-
-    # এর পরে সেটার আউটপুট কে ফ্ল্যাটেন করা, যাতে করে ডেন্স লেয়ার এড করা যায়।  ফ্ল্যাটেন করার পরে প্রথম ডেন্স লেয়ার এড করা। আরো বেশি ডেন্স লেয়ার এড করা যেতে পারে ব্যপার টা তে। পরে চেষ্টা করে দেখতে হবে বিভিন্ন কনফিগারেশন।   ####
-    # এখানে যেমন প্রথম ডেন্স লেয়ারের সাথেই সফটম্যাক্স করে আঊটপুট দেওয়া। এমন না করে আরেকটা ডেন্স লেয়ার রেখে সেইটা তে সফট্ম্যাএক্স করা উচিত। রান দেওার পরে সেই কাজ করতে হবে ###
+    top_model = eegnet(**params)
     x = Flatten()(top_model.output)
     x = Dense(params['num_classes'], activation='softmax', kernel_initializer=initializers.he_normal(seed=random_seed),
-              kernel_constraint=max_norm(params['maxnorm']), use_bias=True)(x)  ##
+              kernel_constraint=max_norm(params['maxnorm']), use_bias=True)(x)
 
-    model = Model(top_model.input, x) # এখানে দুইটা মডেল জোড়া লেগে যাচ্ছে। টপ মডেল, আর পরের ডেন্স করার পরের অংশ - এই দুইটা।
-
-
-    # model = Model(inputs=EEG_input, outputs=x)
-
-
-    model.summary()  # মডেলের সামারি
-    if load_path:  # If path for loading model was specified
+    model = Model(top_model.input, x)
+    model.summary()
+    if load_path:
         model.load_weights(filepath=load_path, by_name=False)
-    #plot_model(model, to_file='model.png', show_shapes=True)  # মডেল কে ইমেজ ফাইলে আঁকা
-    model_json = model.to_json()  # জেসন ফাইলে লেখা হচ্ছে মডেল টা কে। সব ধরনের প্রিকশন নিয়ে রাখা, আর কি।
+    model_json = model.to_json()
     with open(os.path.join(model_dir, log_name, 'model.json').replace('\\','/'), "w") as json_file:
         json_file.write(model_json)
     model.compile(optimizer=opt(lr=0.001, epsilon=None, decay=0.0), loss='categorical_crossentropy', metrics=['accuracy'])  # মডেল কম্পাইলেশন। টেক্সটবুক আচরণ, অবশেষে
     print("model compilation: Done")
-    ####### Define Callbacks #######
-
-    ### ভ্যালিডেশন একুরেসির উপর বেজ করে চেজপয়েন্ট নিয়ে রাখা মডেল সেভ করার জন্য #########
     modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
                                     monitor='val_acc', save_best_only=False, mode='max')
     print("model Checkpoints: Loaded")
-
-    ### টেন্সরবোরড ইন্সট্যান্স কল করা ######
-
-     ######added to solve the issue of the model not running When applied callback
-
-    # tensbd = TensorBoard(log_dir=os.path.join(log_dir, log_name).replace('\\','/'),
-    #                      batch_size=batch_size, histogram_freq=1,
-    #                      write_grads=True,
-    #                      write_images= True
-    #                      # embeddings_freq=99,
-    #                      # embeddings_layer_names=embedding_layer_names,
-    #                      # embeddings_data=x_val,
-    #                      # embeddings_metadata=metadata_file, write_image=True
-    #                      )
-
-    tensbd = TensorBoard(log_dir=log_dir,
-                         batch_size=batch_size,
-                         # histogram_freq=1,
-                         write_grads=True,
-                         # write_images= True
-                         # embeddings_freq=99,
-                         # embeddings_layer_names=embedding_layer_names,
-                         # embeddings_data=x_val,
-                         # embeddings_metadata=metadata_file, write_image=True
-                         )
+    tensbd = TensorBoard(log_dir=log_dir, batch_size=batch_size, write_grads=True,)
 
     print("Tensorboard initialization: Done")
-
-    ##### সিএসভি লগারের ইন্সট্যান্স তৈরি করা, লগ সেইভ করার জন্য ###########
     trainingCSVdirectory = log_dir+'/'+log_name+'/'+'training.csv'
     csv_logger = CSVLogger(trainingCSVdirectory)
-    # with open(trainingCSVdirectory.replace('\\','/'), "w") as my_empty_csv:
-    #     # now you have an empty file already
-    #     pass
-
-    #with open(os.path.join(log_dir, log_name, 'training.csv').replace('\\', '/'), "w") as csvfile:
-    #    csv_logger = CSVLogger(csvfile)
-
-    #
     print("csv logger: Activated")
-    #class_weight= compute_weight(trainY, np.unique(trainY))
-
     if args.classweights:
         params['class_weight'] = compute_weight(dummytrainY, np.unique(dummytrainY))
     else:
-        params['class_weight'] = dict(zip(np.r_[0:params['num_classes']], np.ones(params['num_classes'])))  # weighted 1
-
-    ####### Train #######
-
-    #trainX, valX, trainY, valY, pat_train, pat_val
-
+        params['class_weight'] = dict(zip(np.r_[0:params['num_classes']], np.ones(params['num_classes'])))
 
     print("model dot fit: Started")
     try:
@@ -308,12 +188,9 @@ if __name__ == '__main__':
         model.fit(trainX, trainY, validation_data=(valX, valY),
                   callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val),
                              csv_logger, tensbd],
-                  batch_size=128, epochs=params['epochs'])  # might have bugs
-        #plot_model(moodel, fo_file=log_dir + log_name + '/model.png', show_shapes=True)
+                  batch_size=128, epochs=params['epochs'])
         results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
 
     except KeyboardInterrupt:
         print("Keyboard Interrupt")
-        #results_log(results_file, params)
-        #plot_model(moodel, fo_file=log_dir + log_name + '/model.png', show_shapes=True)
         results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
