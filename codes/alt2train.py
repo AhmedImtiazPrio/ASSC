@@ -167,7 +167,6 @@ if __name__ == '__main__':
         'trainable': True,
         'lr': .0001,
         'lr_decay': 1e-5,
-        'PerPatientAccuracy' : 0,
     }
 
 
@@ -194,8 +193,9 @@ if __name__ == '__main__':
 
     ######পেশেন্ট আইডী বেজ করে স্প্লিট করা নিয়ে কাজ করতে হবে এইখানে। ১৫ জনের ডাটা যাবে ট্রেনিং এ, বাকি দের ডেটা যাবে ভ্যালিডেশনে। ##############
 
-    dummytrainY = trainY.astype(int)
-    dummytrainY= dummytrainY
+    dummytrainY = trainY-1
+    dummytrainY = dummytrainY.astype(int)
+
     print(Counter(trainY))
     trainY = to_categorical(trainY-1, params['num_classes'])
     valY = to_categorical(valY-1, params['num_classes'])
@@ -293,7 +293,7 @@ if __name__ == '__main__':
     #class_weight= compute_weight(trainY, np.unique(trainY))
 
     if args.classweights:
-        params['class_weight'] = compute_weight(trainY, np.unique(trainY))
+        params['class_weight'] = compute_weight(dummytrainY, np.unique(dummytrainY))
     else:
         params['class_weight'] = dict(zip(np.r_[0:params['num_classes']], np.ones(params['num_classes'])))  # weighted 1
 
@@ -305,7 +305,10 @@ if __name__ == '__main__':
     print("model dot fit: Started")
     try:
 
-        model.fit(trainX, trainY, validation_data=(valX, valY), callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val), csv_logger, tensbd], batch_size=128, epochs=params['epochs'])  # might have bugs
+        model.fit(trainX, trainY, validation_data=(valX, valY),
+                  callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val),
+                             csv_logger, tensbd],
+                  batch_size=128, epochs=params['epochs'])  # might have bugs
         #plot_model(moodel, fo_file=log_dir + log_name + '/model.png', show_shapes=True)
         results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
 

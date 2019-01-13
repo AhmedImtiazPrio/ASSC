@@ -43,6 +43,8 @@ from modules import *
 def compute_weight(Y, classes):
     num_samples = len(Y)
     n_classes = len(classes)
+    Y = Y.astype(int)
+    Y = np.expand_dims(Y, axis=1)
     num_bin = np.bincount(Y[:, 0])
     class_weights = {i: (num_samples / (n_classes * num_bin[i])) for i in range(6)}
     return class_weights
@@ -117,21 +119,26 @@ class log_metrics( Callback):
     #### চার টা জিনিস নিচ্ছে সে। এক্স এর মান, ওয়াই এর মান, পেশেন্ট আইডি। আর কাজ করানোর জন্য খরগোশ।
     def __init__(self, valX, valY, patID, **kwargs):
         self.valY = np.argmax(valY, axis=-1)
+        self.valY = np.expand_dims(self.valY, axis=1)
         self.valX = valX
         self.patID = patID
-        super(log_metrics,self).__init__(**kwargs) #### এই সুপার টা এই ফাংশনের পার্ট না হয়ে মেইন ক্লাসের পার্ট হয়ে গেল।
+        super(log_metrics,self).__init__(**kwargs)  #### এই সুপার টা এই ফাংশনের পার্ট না হয়ে মেইন ক্লাসের পার্ট হয়ে গেল।
+
 
     def on_epoch_end(self, epoch, logs):
 
         if logs is not None:
 
             predY = self.model.predict(self.valX, verbose=0)
-            # predY = np.argmax(predY, axis=-1)
+            predY = np.argmax(predY, axis=-1)
+            predY = np.expand_dims(predY, axis=1)
             patAcc = []
-            for pat in np.unique(patID).astype(int):
-                mask = patID == pat
-                patAcc.append(accuracy_score(valY[mask], predY[mask]))
-            params['PerPatientAccuracy'] = np.mean(patAcc)
+            print("printing the shape of predY")
+            print(predY.shape)
+            for pat in np.unique(self.patID).astype(int):
+                mask = self.patID == pat
+                patAcc.append(accuracy_score(self.valY[mask], predY[mask]))
+            logs['PerPatientAccuracy'] = np.mean(patAcc)
             # Enter metric calculations per patient here
             #
             # acc = .9
