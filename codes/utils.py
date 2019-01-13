@@ -23,23 +23,6 @@ from sklearn.metrics import accuracy_score
 from modules import *
 #from utils import *
 
-
-
-
-
-##############remove these imports later.
-
-
-
-
-# import numpy as np
-# from keras.callbacks import Callback
-# from keras import backend as K
-# import pandas as pd
-
-#class_weight={0:3.3359,1:0.3368,2:3.0813,3:2.7868,4:0.7300,5:1.4757}
-
-########### এই টা জিরো থেকে শুরু করলে কাজ করে।
 def compute_weight(Y, classes):
     num_samples = len(Y)
     n_classes = len(classes)
@@ -79,15 +62,6 @@ def patientSplitter(randomIDfile,df2,split_portion):
     del pd
     return X_train,X_test,Y_train,Y_test,pat_train,pat_test
 
-
-    #### রেজাল্ট এর লগিং এখানে। একটা কল ব্যাক দিয়ে সিএসভি ফাইলে গিয়ে ডাম্প করে আসতে হবে।
-
-# def results_log(results_file, log_dir, log_name, params):
-#     print('baal')
-#
-#
-
-
 def results_log(results_file, log_dir, log_name, params):
     df = pd.read_csv(results_file)
     df1 = pd.read_csv(os.path.join(log_dir, log_name, 'training.csv').replace('\\', '/'))
@@ -101,30 +75,13 @@ def results_log(results_file, log_dir, log_name, params):
     df2.to_csv(results_file, index=False)
     print("saving results to csv")
 
-    ########## লগ ম্যাট্রিক্স বানানো।  -_-  #################
-
-    '''Custom callback to add new elements to epoch end logs and tensorflow graphs
-
-            # Callback called on_epoch_end to calcualte validations set metrics using meta
-            # information (Patient ID, channel ID, etc). End of epoch metrics are added to
-            # `logs` which are later used by the tensorboard callback.
-            # log_metrics should be specified in the callback list before tensorboard callback
-            # '''
-
-
 class log_metrics( Callback):
-
-
-    ###### লগ ম্যাট্রিক্স ক্লাসের ইনিশিয়ালাইজার ##################
-    #### চার টা জিনিস নিচ্ছে সে। এক্স এর মান, ওয়াই এর মান, পেশেন্ট আইডি। আর কাজ করানোর জন্য খরগোশ।
     def __init__(self, valX, valY, patID, **kwargs):
         self.valY = np.argmax(valY, axis=-1)
         self.valY = np.expand_dims(self.valY, axis=1)
         self.valX = valX
         self.patID = patID
-        super(log_metrics,self).__init__(**kwargs)  #### এই সুপার টা এই ফাংশনের পার্ট না হয়ে মেইন ক্লাসের পার্ট হয়ে গেল।
-
-
+        super(log_metrics,self).__init__(**kwargs)
     def on_epoch_end(self, epoch, logs):
 
         if logs is not None:
@@ -139,11 +96,6 @@ class log_metrics( Callback):
                 mask = self.patID == pat
                 patAcc.append(accuracy_score(self.valY[mask], predY[mask]))
             logs['PerPatientAccuracy'] = np.mean(patAcc)
-            # Enter metric calculations per patient here
-            #
-            # acc = .9
-            # logs['acc']  = acc
-            ### Learning Rate logging for Adam ###
 
             lr = self.model.optimizer.lr
             if self.model.optimizer.initial_decay > 0:

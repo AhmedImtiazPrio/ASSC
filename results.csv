@@ -1,0 +1,4 @@
+PerPatientAccuracy,aafoldname,acc,activation_function,batch_size,beginning here,bias,dropout_rate,dropout_rate_dense,eeg_length,epoch,epochs,initial_epoch,kernel_size,load_path,loss,lr,lr_decay,maxnorm,num_classes,padding,random_seed,shuffle,subsam,trainable,val_acc,val_loss
+,newallDataChannel1,0.7914609562688316,relu,128.0,,True,0.5,0.0,3000.0,0.0,1.0,0.0,16.0,False,0.5769613076449692,0.0006910841329954568,1e-05,4.0,7.0,valid,5.0,True,2.0,True,0.7894724643055813,0.6761949583352712
+0.6465098521116319,EOG,0.8018551957129544,relu,1024.0,,True,0.5,0.0,3000.0,0.0,1.0,0.0,16.0,False,0.5847132149858111,0.0006451652734540402,1e-05,4.0,7.0,valid,5.0,True,2.0,True,0.6679270180258419,1.8308549389720712
+0.6384028192549365,EOG,0.8019571295433364,relu,1024.0,,True,0.5,0.0,3000.0,0.0,1.0,0.0,16.0,False,0.5843908973975595,0.0006451652734540402,1e-05,4.0,7.0,valid,5.0,True,2.0,True,0.6590199710696171,2.0339294105838537
