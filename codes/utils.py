@@ -74,6 +74,7 @@ def results_log(results_file, log_dir, log_name, params):
     df2 = pd.concat([df, a], axis=0)
     df2.to_csv(results_file, index=False)
     print("saving results to csv")
+    #print(params['class_weight'])
 
 class log_metrics( Callback):
     def __init__(self, valX, valY, patID, **kwargs):

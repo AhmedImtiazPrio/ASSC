@@ -23,6 +23,7 @@ import pandas as pd
 
 from modules import *
 from utils import *
+from AudioDataGenerator import *
 
 
 import xgboost as xgb
@@ -122,18 +123,18 @@ if __name__ == '__main__':
         'eeg_length': 3000,
         'kernel_size': 16,
         'bias': True,
-        'maxnorm': 4.,
-        'dropout_rate': 0.5,
+        'maxnorm': 400000000000.,
+        'dropout_rate': 0.45, #.5
         'dropout_rate_dense': 0.,
         'padding': 'valid',
         'activation_function': 'relu',
         'subsam': 2,
         'trainable': True,
-        'lr': .0001,
-        'lr_decay': 1e-5,
+        'lr': .00008, #.0001
+        'lr_decay': 5*1e-6, #1e-5
     }
 
-    df2 = pd.read_csv('E:/SleepWell/ASSC/data/purifiedallDataChannel3.csv', header=None)
+    df2 = pd.read_csv('E:/SleepWell/ASSC/data/purifiedallDataChannel1.csv', header=None)
     df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
 
     trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDs.csv', df2, 0.7)
@@ -171,7 +172,11 @@ if __name__ == '__main__':
     modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
                                     monitor='val_acc', save_best_only=False, mode='max')
     print("model Checkpoints: Loaded")
-    tensbd = TensorBoard(log_dir=log_dir, batch_size=batch_size, write_grads=True,)
+
+    tensdir = log_dir + "/" + log_name + "/"
+    tensdir = tensdir.replace('/', "\\")
+
+    tensbd = TensorBoard(log_dir=tensdir, batch_size=batch_size, write_grads=True,)
 
     print("Tensorboard initialization: Done")
     trainingCSVdirectory = log_dir+'/'+log_name+'/'+'training.csv'
@@ -185,10 +190,42 @@ if __name__ == '__main__':
     print("model dot fit: Started")
     try:
 
-        model.fit(trainX, trainY, validation_data=(valX, valY),
-                  callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val),
-                             csv_logger, tensbd],
-                  batch_size=128, epochs=params['epochs'])
+        datagen = AudioDataGenerator(
+                                     #shift=.1,
+                                      roll_range=.15,
+                                     # fill_mode='reflect',
+                                     # featurewise_center=True,
+                                     # zoom_range=.1,
+                                     # zca_whitening=True,
+                                      samplewise_center=True,
+                                      samplewise_std_normalization=True,
+                                             )
+
+        valgen = AudioDataGenerator(
+             # fill_mode='reflect',
+             # featurewise_center=True,
+             # zoom_range=.2,
+             # zca_whitening=True,
+              #roll_range=.1, রোল বন্ধ, যাতে সব সময় একই ডাটার উপরে ভ্যালিডেশন হয়।
+              samplewise_center=True,
+              samplewise_std_normalization=True,
+         )
+        print("printing the weights")
+        print(compute_weight(dummytrainY, np.unique(dummytrainY)))
+        model.fit_generator(datagen.flow(trainX, trainY, batch_size=params['batch_size'], shuffle=True, seed=params['random_seed']),
+                            steps_per_epoch=len(trainX) // params['batch_size'],
+                            epochs=params['epochs'],
+                            callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val),
+                                       csv_logger, tensbd],
+                            validation_data=valgen.flow(valX, valY, batch_size= params['batch_size'], seed=params['random_seed'])
+                            #validation_data=(valX, valY),
+                            )
+
+
+        # model.fit(trainX, trainY, validation_data=(valX, valY),
+        #           callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val),
+        #                      csv_logger, tensbd],
+        #           batch_size=64, epochs=params['epochs'])
         results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
 
     except KeyboardInterrupt:
