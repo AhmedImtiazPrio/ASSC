@@ -28,6 +28,8 @@ from AudioDataGenerator import *
 
 import xgboost as xgb
 
+global_epoch_counter = 1
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='')
@@ -179,6 +181,8 @@ if __name__ == '__main__':
     tensbd = TensorBoard(log_dir=tensdir, batch_size=batch_size, write_grads=True,)
 
     print("Tensorboard initialization: Done")
+
+    patlogDirectory = log_dir+'/' + log_name + '/'
     trainingCSVdirectory = log_dir+'/'+log_name+'/'+'training.csv'
     csv_logger = CSVLogger(trainingCSVdirectory)
     print("csv logger: Activated")
@@ -215,7 +219,7 @@ if __name__ == '__main__':
         model.fit_generator(datagen.flow(trainX, trainY, batch_size=params['batch_size'], shuffle=True, seed=params['random_seed']),
                             steps_per_epoch=len(trainX) // params['batch_size'],
                             epochs=params['epochs'],
-                            callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val),
+                            callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
                                        csv_logger, tensbd],
                             validation_data=valgen.flow(valX, valY, batch_size= params['batch_size'], seed=params['random_seed'])
                             #validation_data=(valX, valY),

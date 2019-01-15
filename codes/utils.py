@@ -77,12 +77,14 @@ def results_log(results_file, log_dir, log_name, params):
     #print(params['class_weight'])
 
 class log_metrics( Callback):
-    def __init__(self, valX, valY, patID, **kwargs):
+    def __init__(self, valX, valY, patID, patlogDirectory, global_epoch_counter, **kwargs):
         self.valY = np.argmax(valY, axis=-1)
         self.valY = np.expand_dims(self.valY, axis=1)
         self.valX = valX
         self.patID = patID
         super(log_metrics,self).__init__(**kwargs)
+        self.patlogDirectory = patlogDirectory
+        self.global_epoch_counter = global_epoch_counter
     def on_epoch_end(self, epoch, logs):
 
         if logs is not None:
@@ -97,7 +99,10 @@ class log_metrics( Callback):
                 mask = self.patID == pat
                 patAcc.append(accuracy_score(self.valY[mask], predY[mask]))
             logs['PerPatientAccuracy'] = np.mean(patAcc)
-
+            #logs['PerPatientAccuracy'] = patAcc
+            np.savetxt(self.patlogDirectory + "epoch" + str(self.global_epoch_counter)+"patAcc.csv", patAcc, delimiter=",")
+            self.global_epoch_counter = self.global_epoch_counter +1
+            global_epoch_counter = self.global_epoch_counter
             lr = self.model.optimizer.lr
             if self.model.optimizer.initial_decay > 0:
                 lr *= (1. / (1. + self.model.optimizer.decay * K.cast(self.model.optimizer.iterations, K.dtype(self.model.optimizer.decay))))
