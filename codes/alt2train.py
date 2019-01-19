@@ -25,6 +25,8 @@ from modules import *
 from utils import *
 from AudioDataGenerator import *
 
+from sklearn.preprocessing import StandardScaler
+
 
 import xgboost as xgb
 
@@ -126,20 +128,25 @@ if __name__ == '__main__':
         'kernel_size': 16,
         'bias': True,
         'maxnorm': 400000000000.,
-        'dropout_rate': 0.45, #.5
-        'dropout_rate_dense': 0.,
+        'dropout_rate': 0.5, #.5
+        'dropout_rate_dense': 0.1,
         'padding': 'valid',
         'activation_function': 'relu',
         'subsam': 2,
         'trainable': True,
         'lr': .00008, #.0001
-        'lr_decay': 5*1e-6, #1e-5
+        'lr_decay': 5e-6, #1e-5
     }
 
-    df2 = pd.read_csv('E:/SleepWell/ASSC/data/purifiedallDataChannel1.csv', header=None)
+    df2 = pd.read_csv('E:/SleepWell/ASSC/data/lastpurifiedallDataChannel1.csv', header=None)
     df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
 
-    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDs.csv', df2, 0.7)
+    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDsfinal.csv', df2, 0.7)
+    # trainX = standardnormalization(trainX)
+    # valX = standardnormalization(valX)
+
+
+
     print("Dataframe has been loaded")
     dummytrainY = trainY-1
     dummytrainY = dummytrainY.astype(int)
@@ -225,11 +232,10 @@ if __name__ == '__main__':
                             #validation_data=(valX, valY),
                             )
 
-
+        #
         # model.fit(trainX, trainY, validation_data=(valX, valY),
-        #           callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val),
-        #                      csv_logger, tensbd],
-        #           batch_size=64, epochs=params['epochs'])
+        #        callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter), csv_logger, tensbd],
+        #       batch_size=64, epochs=params['epochs'])
         results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
 
     except KeyboardInterrupt:

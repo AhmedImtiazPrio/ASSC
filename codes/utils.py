@@ -23,6 +23,15 @@ from sklearn.metrics import accuracy_score
 from modules import *
 #from utils import *
 
+def standardnormalization(distribution):
+    from sklearn.preprocessing import StandardScaler
+    data = distribution.flatten('A')
+    data = np.expand_dims(data, axis=1)
+    scaler = StandardScaler()
+    outdata = scaler.fit_transform(data)
+    toutdata = outdata.reshape(int(outdata.shape[0]/3000),3000)
+    return toutdata
+
 def compute_weight(Y, classes):
     num_samples = len(Y)
     n_classes = len(classes)
@@ -100,7 +109,12 @@ class log_metrics( Callback):
                 patAcc.append(accuracy_score(self.valY[mask], predY[mask]))
             logs['PerPatientAccuracy'] = np.mean(patAcc)
             #logs['PerPatientAccuracy'] = patAcc
+
             np.savetxt(self.patlogDirectory + "epoch" + str(self.global_epoch_counter)+"patAcc.csv", patAcc, delimiter=",")
+            np.savetxt(self.patlogDirectory+"patients.csv", self.patID, delimiter=",")
+
+            #self.patID.to_csv(self.patlogDirectory+"patients.csv", index=False)
+
             self.global_epoch_counter = self.global_epoch_counter +1
             global_epoch_counter = self.global_epoch_counter
             lr = self.model.optimizer.lr
