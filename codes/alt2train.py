@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     params = {
 
-        'num_classes': 7,
+        'num_classes': 6,
         'batch_size': batch_size,
         'epochs': epochs,
         'aafoldname': foldname,
@@ -134,14 +134,14 @@ if __name__ == '__main__':
         'activation_function': 'relu',
         'subsam': 2,
         'trainable': True,
-        'lr': .00008, #.0001
-        'lr_decay': 5e-6, #1e-5
+        'lr': .00004, #.0001
+        'lr_decay': 1e-6, #1e-5
     }
 
     df2 = pd.read_csv('E:/SleepWell/ASSC/data/lastpurifiedallDataChannel1.csv', header=None)
     df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
 
-    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDsfinal.csv', df2, 0.7)
+    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDscastel.csv', df2, 0.65)
     # trainX = standardnormalization(trainX)
     # valX = standardnormalization(valX)
 
@@ -228,7 +228,7 @@ if __name__ == '__main__':
                             epochs=params['epochs'],
                             callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
                                        csv_logger, tensbd],
-                            validation_data=valgen.flow(valX, valY, batch_size= params['batch_size'], seed=params['random_seed'])
+                            validation_data=valgen.flow(valX, valY, batch_size= params['batch_size'], seed=params['random_seed']), verbose=2
                             #validation_data=(valX, valY),
                             )
 
