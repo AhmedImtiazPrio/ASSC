@@ -135,16 +135,22 @@ if __name__ == '__main__':
         'subsam': 2,
         'trainable': True,
         'lr': .00001, #.0001
-        'lr_decay': 4e-6, #1e-5
+        'lr_decay': 6e-6, #1e-5
     }
 
     df2 = pd.read_csv('E:/SleepWell/ASSC/data/lastpurifiedallDataChannel1.csv', header=None)
     df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
 
-    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('casetteID.csv', df2, 0.72,totalPat=39)
+    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDscastel.csv', df2, 0.64, 61)
     # trainX = standardnormalization(trainX)
     # valX = standardnormalization(valX)
     df2 = []
+
+    # mean = np.mean(trainX)
+    # std = np.std(trainX)
+    #
+    # valY = valY - mean
+    # valY = valY / std
 
 
     print("Dataframe has been loaded")

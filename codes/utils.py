@@ -41,7 +41,7 @@ def compute_weight(Y, classes):
     class_weights = {i: (num_samples / (n_classes * num_bin[i])) for i in range(6)}
     return class_weights
 
-def patientSplitter(randomIDfile,df2,split_portion,totalPat = 61):
+def patientSplitter(randomIDfile,df2,split_portion, totalPat = 61):
     import pandas as pd
 
     df1 = pd.read_csv(randomIDfile,header=None)
