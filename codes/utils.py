@@ -41,11 +41,11 @@ def compute_weight(Y, classes):
     class_weights = {i: (num_samples / (n_classes * num_bin[i])) for i in range(6)}
     return class_weights
 
-def patientSplitter(randomIDfile,df2,split_portion):
+def patientSplitter(randomIDfile,df2,split_portion,totalPat = 61):
     import pandas as pd
 
     df1 = pd.read_csv(randomIDfile,header=None)
-    split_portion_numer=int(split_portion*61)
+    split_portion_numer=int(split_portion*totalPat)
 
     train_pat_list = [int(each) for each in df1.iloc[:split_portion_numer].values]
     test_pat_list = [int(each) for each in df1.iloc[split_portion_numer:].values]
