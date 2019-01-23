@@ -128,20 +128,20 @@ if __name__ == '__main__':
         'kernel_size': 16,
         'bias': True,
         'maxnorm': 400000000000.,
-        'dropout_rate': 0.5, #.5
+        'dropout_rate': 0.6, #.5
         'dropout_rate_dense': 0.,
         'padding': 'valid',
         'activation_function': 'relu',
         'subsam': 2,
         'trainable': True,
-        'lr': .00001, #.0001
-        'lr_decay': 6e-6, #1e-5
+        'lr': .001, #.0001
+        'lr_decay': .0001, #1e-5
     }
 
     df2 = pd.read_csv('E:/SleepWell/ASSC/data/lastpurifiedallDataChannel1.csv', header=None)
     df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
 
-    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDscastel.csv', df2, 0.64, 61)
+    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('casetteID.csv', df2, 0.7, 39)
     # trainX = standardnormalization(trainX)
     # valX = standardnormalization(valX)
     df2 = []
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     model_json = model.to_json()
     with open(os.path.join(model_dir, log_name, 'model.json').replace('\\','/'), "w") as json_file:
         json_file.write(model_json)
-    model.compile(optimizer=opt(lr=0.001, epsilon=None, decay=0.0), loss='categorical_crossentropy', metrics=['accuracy'])  # মডেল কম্পাইলেশন। টেক্সটবুক আচরণ, অবশেষে
+    model.compile(optimizer=opt(lr=params['lr'], epsilon=None, decay=params['lr_decay']), loss='categorical_crossentropy', metrics=['accuracy'])  # মডেল কম্পাইলেশন। টেক্সটবুক আচরণ, অবশেষে
     print("model compilation: Done")
     modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
                                     monitor='val_acc', save_best_only=False, mode='max')
@@ -208,7 +208,7 @@ if __name__ == '__main__':
     try:
 
         datagen = AudioDataGenerator(
-                                     #shift=.1,
+                                      shift=.1,
                                       roll_range=.15,
                                      # fill_mode='reflect',
                                      # featurewise_center=True,
