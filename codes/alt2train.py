@@ -8,6 +8,10 @@ import numpy as np
 from collections import Counter
 np.random.seed(1)
 from tensorflow import set_random_seed
+from imblearn.datasets import make_imbalance
+from imblearn.keras import BalancedBatchGenerator
+from imblearn.under_sampling import NearMiss
+from keras.callbacks import LearningRateScheduler
 
 set_random_seed(1)
 from datetime import datetime
@@ -51,6 +55,15 @@ if __name__ == '__main__':
                         help="if True, class weights are added")
     parser.add_argument("--comment",
                         help="Add comments to the log files")
+    parser.add_argument("--wakeReduction", type =bool,
+                        help="Reduces wake class by a given percentage")
+    parser.add_argument("--s1Reduction", type = bool,
+                        help="Reduces s1 class by a given percentage")
+    parser.add_argument("--wakeRedSize", type=float,
+                        help='the portion of wake data to be reduced')
+    parser.add_argument("--s1RedSize", type= float,
+                        help='the portion of s1 data to be reduced')
+
 
     args = parser.parse_args()
     print("%s selected" % (args.fold))
@@ -98,6 +111,16 @@ if __name__ == '__main__':
     else:
         comment = None
 
+    if args.wakeReduction:
+        wakeReduction = args.wakeReduction
+    if args.s1Reduction:
+        s1Reduction = args.s1Reduction
+    if args.wakeRedSize:
+        wakeRedSize = args.wakeRedSize
+    if args.s1RedSize:
+        s1RedSize = args.s1RedSize
+
+
     model_dir = os.path.join(os.getcwd(),'..','models').replace('\\', '/')
     fold_dir = os.path.join(os.getcwd(),'..','data').replace('\\', '/')
     log_dir = os.path.join(os.getcwd(),'..','logs').replace('\\', '/')
@@ -135,8 +158,13 @@ if __name__ == '__main__':
         'subsam': 2,
         'trainable': True,
         'lr': .001, #.0001
-        'lr_decay': .0001, #1e-5
+        'lr_decay': 1e-5, #1e-5
     }
+
+
+
+
+
 
     df2 = pd.read_csv('E:/SleepWell/ASSC/data/lastpurifiedallDataChannel1.csv', header=None)
     df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
@@ -145,6 +173,9 @@ if __name__ == '__main__':
     # trainX = standardnormalization(trainX)
     # valX = standardnormalization(valX)
     df2 = []
+
+    trainX, trainY = epoch_reduction(trainX, trainY, wakeReduction, wakeRedSize, s1Reduction, s1RedSize)
+
 
     # mean = np.mean(trainX)
     # std = np.std(trainX)
@@ -205,6 +236,24 @@ if __name__ == '__main__':
         params['class_weight'] = dict(zip(np.r_[0:params['num_classes']], np.ones(params['num_classes'])))
 
     print("model dot fit: Started")
+
+    def step_decay(global_epoch_counter):
+        # initial_lrate = params['lr']
+        # drop = params['lr']*9/10
+        # epochs_drop = 10.0
+        # lrate = initial_lrate * math.pow(drop, math.floor((1 + global_epoch_counter) / epochs_drop))
+
+
+        if global_epoch_counter<11:
+            lrate = params['lr']
+        if global_epoch_counter>10:
+            lrate = params['lr']/10
+
+        return lrate
+
+
+    lrate = LearningRateScheduler(step_decay)
+
     try:
 
         datagen = AudioDataGenerator(
@@ -226,16 +275,26 @@ if __name__ == '__main__':
               #roll_range=.1, রোল বন্ধ, যাতে সব সময় একই ডাটার উপরে ভ্যালিডেশন হয়।
               samplewise_center=True,
               samplewise_std_normalization=True,
-         )
+        )
         print("printing the weights")
         print(compute_weight(dummytrainY, np.unique(dummytrainY)))
+
+
+        #training_generator, steps_per_epoch = BalancedBatchGenerator(trainX, trainY, batch_size=params['batch_size'], random_state = 42)
+        #
+        # model.fit_generator(generator=training_generator, steps_per_epoch = steps_per_epoch, epochs = params['epochs'], verbose = 0,
+        #                     callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
+        #                                 csv_logger, tensbd], validation_data=(valX, valY))
+
+
+
         model.fit_generator(datagen.flow(trainX, trainY, batch_size=params['batch_size'], shuffle=True, seed=params['random_seed']),
                             steps_per_epoch=len(trainX) // params['batch_size'],
                             epochs=params['epochs'],
                             callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
-                                       csv_logger, tensbd],
-                            validation_data=valgen.flow(valX, valY, batch_size= params['batch_size'], seed=params['random_seed'])
-                            #validation_data=(valX, valY),
+                                       csv_logger, tensbd, lrate],
+                            validation_data=valgen.flow(valX, valY, batch_size= params['batch_size'], seed=params['random_seed']),
+                            class_weight=params['class_weight']
                             )
 
         #
