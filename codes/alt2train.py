@@ -157,8 +157,8 @@ if __name__ == '__main__':
         'activation_function': 'relu',
         'subsam': 2,
         'trainable': True,
-        'lr': .001, #.0001
-        'lr_decay': 1e-5, #1e-5
+        'lr': .0007, #.0001
+        'lr_decay': 0 #1e-5, #1e-5
     }
 
 
