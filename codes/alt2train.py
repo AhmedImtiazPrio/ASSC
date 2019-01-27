@@ -57,12 +57,12 @@ if __name__ == '__main__':
                         help="Add comments to the log files")
     parser.add_argument("--wakeReduction", type =bool,
                         help="Reduces wake class by a given percentage")
-    parser.add_argument("--s1Reduction", type = bool,
+    parser.add_argument("--s2Reduction", type = bool,
                         help="Reduces s1 class by a given percentage")
     parser.add_argument("--wakeRedSize", type=float,
                         help='the portion of wake data to be reduced')
-    parser.add_argument("--s1RedSize", type= float,
-                        help='the portion of s1 data to be reduced')
+    parser.add_argument("--s2RedSize", type= float,
+                        help='the portion of s2 data to be reduced')
 
 
     args = parser.parse_args()
@@ -113,12 +113,12 @@ if __name__ == '__main__':
 
     if args.wakeReduction:
         wakeReduction = args.wakeReduction
-    if args.s1Reduction:
-        s1Reduction = args.s1Reduction
+    if args.s2Reduction:
+        s2Reduction = args.s2Reduction
     if args.wakeRedSize:
         wakeRedSize = args.wakeRedSize
-    if args.s1RedSize:
-        s1RedSize = args.s1RedSize
+    if args.s2RedSize:
+        s2RedSize = args.s2RedSize
 
 
     model_dir = os.path.join(os.getcwd(),'..','models').replace('\\', '/')
@@ -157,7 +157,7 @@ if __name__ == '__main__':
         'activation_function': 'relu',
         'subsam': 2,
         'trainable': True,
-        'lr': .0007, #.0001
+        'lr': .001, #.0001
         'lr_decay': 0 #1e-5, #1e-5
     }
 
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     # valX = standardnormalization(valX)
     df2 = []
 
-    trainX, trainY = epoch_reduction(trainX, trainY, wakeReduction, wakeRedSize, s1Reduction, s1RedSize)
+    trainX, trainY = epoch_reduction(trainX, trainY, wakeReduction, wakeRedSize, s2Reduction, s2RedSize)
 
 
     # mean = np.mean(trainX)
@@ -290,6 +290,7 @@ if __name__ == '__main__':
 
         model.fit_generator(datagen.flow(trainX, trainY, batch_size=params['batch_size'], shuffle=True, seed=params['random_seed']),
                             steps_per_epoch=len(trainX) // params['batch_size'],
+                            # steps_per_epoch=4,
                             epochs=params['epochs'],
                             callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
                                        csv_logger, tensbd, lrate],

@@ -95,7 +95,7 @@ def results_log(results_file, log_dir, log_name, params):
 
 
 
-def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s1Reduction=False, s1RedSize=0.0):
+def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s2Reduction=False, s2RedSize=0.0):
 
     if(wakeReduction):
         wakecount = 0
@@ -112,14 +112,14 @@ def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s1Redu
         trainX = trainX[trainwakemask]
         trainY = trainY[trainwakemask]
 
-    if (s1Reduction):
-        s1count = 0
+    if (s2Reduction):
+        s2count = 0
         trains1mask = trainY == 2
         for i in range(0, len(trains1mask)):
             if trains1mask[i] == 1:
-                s1count = s1count + 1
-        print(s1count)
-        willdeletes1 = int(s1count * s1RedSize)
+                s2count = s2count + 1
+        print(s2count)
+        willdeletes1 = int(s2count * s2RedSize)
 
         for i in range(willdeletes1, len(trains1mask)):
             trains1mask[i] = 0
@@ -134,7 +134,7 @@ def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s1Redu
 class log_metrics( Callback):
     def __init__(self, valX, valY, patID, patlogDirectory, global_epoch_counter, **kwargs):
         self.valY = np.argmax(valY, axis=-1)
-        self.valY = np.expand_dims(self.valY, axis=-1)
+        # self.valY = np.expand_dims(self.valY, axis=1)
         self.valX = valX
         self.patID = patID
         super(log_metrics,self).__init__(**kwargs)
@@ -148,10 +148,10 @@ class log_metrics( Callback):
     def calcMetrics(self,predY,mask=None):
 
         if mask is None:
-            mask = np.ones(shape=self.valY.shape)
+            mask = np.ones(shape=self.valY.shape).astype(bool)
 
-        if not (self.valY.shape == predY.shape):
-            predY = np.expand_dims(predY,axis=-1)
+        # if not (self.valY.shape == predY.shape):
+        #     predY = np.expand_dims(predY,axis=-1)
 
         true = self.valY[mask]
         predY = predY[mask]
@@ -203,15 +203,16 @@ class log_metrics( Callback):
                 patAcc.append(acc)
             logs["patAcc"] = np.mean(patAcc)
 
-            sens,spec,acc = self.calcMetrics(predY,self.patID <= 39)
+            sens,spec,acc = self.calcMetrics(predY,self.patID[:,0] <= 39)
             logs['SC-Sens'] = np.mean(sens)
             logs['SC-Spec'] = np.mean(spec)
             logs['SC-Acc'] = np.mean(acc)
 
-            sens,spec,acc = self.calcMetrics(predY,self.patID > 39)
-            logs['ST-Sens'] = np.mean(sens)
-            logs['ST-Spec'] = np.mean(spec)
-            logs['ST-Acc'] = np.mean(acc)
+            if sum(self.patID[:,0] > 39):
+                sens,spec,acc = self.calcMetrics(predY,self.patID[:,0] > 39)
+                logs['ST-Sens'] = np.mean(sens)
+                logs['ST-Spec'] = np.mean(spec)
+                logs['ST-Acc'] = np.mean(acc)
             #
             # # perClassSens= []
             # # perClassSpec = []
