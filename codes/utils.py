@@ -330,11 +330,15 @@ class log_metrics( Callback):
 
             self.global_epoch_counter = self.global_epoch_counter +1
             global_epoch_counter = self.global_epoch_counter
+
+
+
+            ##############
             lr = self.model.optimizer.lr
             if self.model.optimizer.initial_decay > 0:
                 lr *= (1. / (1. + self.model.optimizer.decay * K.cast(self.model.optimizer.iterations, K.dtype(self.model.optimizer.decay))))
             t = K.cast(self.model.optimizer.iterations, K.floatx()) + 1
             lr_t = lr * (K.sqrt(1. - K.pow(self.model.optimizer.beta_2, t)) / (1. - K.pow(self.model.optimizer.beta_1, t)))
             logs['lr'] = np.array(float(K.get_value(lr_t)))
-
+            #logs['lr'] = self.model.optimizer.lr
 

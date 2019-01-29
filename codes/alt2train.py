@@ -22,6 +22,7 @@ from keras.utils import to_categorical, plot_model
 from keras.layers import Flatten, Dense
 from keras.models import Model
 from keras.optimizers import Adamax as opt
+from keras import optimizers
 from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger
 import pandas as pd
 
@@ -35,6 +36,7 @@ from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
 
 global_epoch_counter = 1
+
 
 if __name__ == '__main__':
 
@@ -151,19 +153,19 @@ if __name__ == '__main__':
         'kernel_size': 16,
         'bias': True,
         'maxnorm': 400000000000.,
-        'dropout_rate': 0.6, #.5
+        'dropout_rate': 0.5, #.5
         'dropout_rate_dense': 0.,
         'padding': 'valid',
         'activation_function': 'relu',
         'subsam': 2,
         'trainable': True,
         'lr': .001, #.0001
-        'lr_decay': 0 #1e-5, #1e-5
+        'lr_decay': 0.0 #1e-5, #1e-5
     }
 
 
 
-
+    current_learning_rate= params['lr']
 
 
     df2 = pd.read_csv('E:/SleepWell/ASSC/data/lastpurifiedallDataChannel1.csv', header=None)
@@ -213,7 +215,21 @@ if __name__ == '__main__':
     model_json = model.to_json()
     with open(os.path.join(model_dir, log_name, 'model.json').replace('\\','/'), "w") as json_file:
         json_file.write(model_json)
+
+
+
+    ################### ADAM COMPILATION ##############
     model.compile(optimizer=opt(lr=params['lr'], epsilon=None, decay=params['lr_decay']), loss='categorical_crossentropy', metrics=['accuracy'])  # মডেল কম্পাইলেশন। টেক্সটবুক আচরণ, অবশেষে
+    ##################################################
+
+
+    ################# SGD COMPILATION ################
+
+    #sgd = optimizers.SGD(lr=params['lr'], decay=params['lr_decay'], momentum=0.9, nesterov=True)
+    #model.compile(optimizer= sgd, loss= 'categorical_crossentropy', metrics=['accuracy'] )
+    ##################################################
+
+
     print("model compilation: Done")
     modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
                                     monitor='val_acc', save_best_only=False, mode='max')
@@ -238,22 +254,22 @@ if __name__ == '__main__':
     print("model dot fit: Started")
 
     def step_decay(global_epoch_counter):
-        # initial_lrate = params['lr']
-        # drop = params['lr']*9/10
-        # epochs_drop = 10.0
-        # lrate = initial_lrate * math.pow(drop, math.floor((1 + global_epoch_counter) / epochs_drop))
-
-
-        if global_epoch_counter<11:
-            lrate = params['lr']
+        lrate= params['lr']
         if global_epoch_counter>10:
-            lrate = params['lr']/10
-
+            lrate=params['lr']/10
+            if global_epoch_counter>20:
+                lrate=params['lr']/100
         return lrate
-
-
+        #    lr_t = lr * (K.sqrt(1. - K.pow(self.model.optimizer.beta_2, t)) / (1. - K.pow(self.model.optimizer.beta_1, t)))
+        #    AttributeError: 'SGD' object has no attribute 'beta_2'
+        # if not global_epoch_counter%10:
+        #     current_learning_rate = current_learning_rate/10
+        #     print("learning rate reduced")
+        # lrate = current_learning_rate
+        # return lrate
     lrate = LearningRateScheduler(step_decay)
 
+#    current_learning_rate = lrate
     try:
 
         datagen = AudioDataGenerator(
