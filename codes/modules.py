@@ -86,9 +86,14 @@ def res_subsam(input_tensor, filters=(64,64), kernel_size=16, subsam=2, dropout_
     x = Dropout(rate=dropout_rate, seed=1)(x)
     x = Conv1D(filters=nb_filter2, kernel_initializer=initializers.he_normal(seed=1), kernel_size=kernel_size,
                padding='same', use_bias=bias, kernel_constraint=max_norm(maxnorm))(x)  ##
-    short = Conv1D(filters=nb_filter2, kernel_size=kernel_size, padding='same', use_bias=bias,
-                   kernel_constraint=max_norm(maxnorm), kernel_initializer=initializers.he_normal(seed=1))(
-        input_tensor)  ##
+
+
+    # try this later
+    short = Conv1D(filters=nb_filter2, kernel_size=1, padding='same', use_bias=bias,
+                   kernel_constraint=max_norm(maxnorm), kernel_initializer=initializers.he_normal(seed=1))(input_tensor)
+
+    # short = Conv1D(filters=nb_filter2, kernel_size=kernel_size, padding='same', use_bias=bias,
+    #                kernel_constraint=max_norm(maxnorm), kernel_initializer=initializers.he_normal(seed=1))(input_tensor)  ##
     short = MaxPooling1D(pool_size=subsam)(short)
     x = add([x, short])
     return x
