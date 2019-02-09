@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
 ################# Making 5 Class Data ############################
 
-    if num_class ==5:
+    if num_class == 5:
 
         for i in range(1, len(valY) + 1):
             if int(valY[i - 1]) == 4:
@@ -241,8 +241,8 @@ if __name__ == '__main__':
     tensdir = log_dir + "/" + log_name + "/"
     tensdir = tensdir.replace('/', "\\")
     tensbd = TensorBoard(log_dir=tensdir, batch_size=batch_size, write_grads=True,)
-    patlogDirectory = log_dir+'/' + log_name + '/'
-    trainingCSVdirectory = log_dir+'/'+log_name+'/'+'training.csv'
+    patlogDirectory = log_dir +'/'+ log_name +'/'
+    trainingCSVdirectory = log_dir +'/'+ log_name +'/'+ 'training.csv'
     csv_logger = CSVLogger(trainingCSVdirectory)
 
     if args.classweights:
