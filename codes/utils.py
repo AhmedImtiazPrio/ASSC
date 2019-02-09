@@ -155,9 +155,6 @@ class log_metrics( Callback):
         if mask is None:
             mask = np.ones(shape=self.valY.shape).astype(bool)
 
-        # if not (self.valY.shape == predY.shape):
-        #     predY = np.expand_dims(predY,axis=-1)
-
         true = self.valY[mask]
         predY = predY[mask]
         confMat = confusion_matrix(true, predY)
