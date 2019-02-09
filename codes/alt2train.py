@@ -77,6 +77,7 @@ if __name__ == '__main__':
     else:
         random_seed = 1
 
+
     if args.loadmodel:  # If a previously trained model is loaded for retraining
         load_path = args.loadmodel  #### path to model to be loaded
 
@@ -153,7 +154,7 @@ if __name__ == '__main__':
         'kernel_size': 16,
         'bias': True,
         'maxnorm': 400000000000.,
-        'dropout_rate': 0.5, #.5
+        'dropout_rate': 0.35, #.5
         'dropout_rate_dense': 0.,
         'padding': 'valid',
         'activation_function': 'relu',
@@ -255,10 +256,12 @@ if __name__ == '__main__':
 
     def step_decay(global_epoch_counter):
         lrate= params['lr']
-        if global_epoch_counter>10:
+        if global_epoch_counter>7:
             lrate=params['lr']/10
-            if global_epoch_counter>20:
+            if global_epoch_counter>14:
                 lrate=params['lr']/100
+                if global_epoch_counter>21:
+                    lrate=params['lr']/1000
         return lrate
         #    lr_t = lr * (K.sqrt(1. - K.pow(self.model.optimizer.beta_2, t)) / (1. - K.pow(self.model.optimizer.beta_1, t)))
         #    AttributeError: 'SGD' object has no attribute 'beta_2'

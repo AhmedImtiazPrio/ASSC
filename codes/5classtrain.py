@@ -257,7 +257,7 @@ if __name__ == '__main__':
 
     print("model compilation: Done")
     modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
-                                    monitor='val_acc', save_best_only=False, mode='max')
+                                    monitor='val_acc', save_best_only=True, mode='max')
     print("model Checkpoints: Loaded")
 
     tensdir = log_dir + "/" + log_name + "/"
@@ -324,8 +324,8 @@ if __name__ == '__main__':
 
 
         model.fit_generator(datagen.flow(trainX, trainY, batch_size=params['batch_size'], shuffle=True, seed=params['random_seed']),
-                            # steps_per_epoch=len(trainX) // params['batch_size'],
-                            steps_per_epoch=4,
+                            steps_per_epoch=len(trainX) // params['batch_size'],
+                            # steps_per_epoch=4,
                             epochs=params['epochs'],
                             validation_data=valgen.flow(valX, valY, batch_size=params['batch_size'],
                                                         seed=params['random_seed']),

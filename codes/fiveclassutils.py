@@ -89,15 +89,10 @@ def results_log(results_file, log_dir, log_name, params):
     #print(params['class_weight'])
 
 
-
-
-
-
-
 def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s2Reduction=False, s2RedSize=0.0):
 
     if wakeReduction:
-        mask = trainY == 6
+        mask = trainY == 5
         wakeidx = np.nonzero(mask)[0]
         dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * wakeRedSize), replace=False)
         trainX = np.delete(trainX, dropidx, axis=0)
@@ -105,8 +100,8 @@ def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s2Redu
 
     if s2Reduction:
         mask = trainY == 2
-        wakeidx = np.nonzero(mask)[0]
-        dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * s2RedSize), replace=False)
+        s2idx = np.nonzero(mask)[0]
+        dropidx = np.random.choice(s2idx, size=int(s2idx.shape[0] * s2RedSize), replace=False)
         trainX = np.delete(trainX, dropidx, axis=0)
         trainY = np.delete(trainY, dropidx, axis=0)
 
