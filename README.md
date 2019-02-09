@@ -15,7 +15,7 @@ bash bulkdownload.sh
 
 Download and create *.csv* files containing EEG Data and hypnogram annotations, place them in the *data* sub-folder. The *.csv* files should have ***rows = number of 30s data epochs***. Columns should have a size of 3003 and arranged as:
 
-***data points (columns 1-3000) | hypnogram annotation | recording ID | epoch ID***
+***data points (columns 1-3000) | hypnogram annotation | epoch ID | recording ID***
 
 Recording IDs are renamed from 1-61. 
 
