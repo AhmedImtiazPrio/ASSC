@@ -7,7 +7,7 @@
 
 ## Dataset Download:
 
-Download the ***Physionet Sleep-EDF Expanded*** dataset by running the bash script on linux:
+Download the ***Physionet Sleep-EDF Expanded*** dataset by running the bash script on linux inside the ASSC root:
 ```
 bash bulkdownload.sh
 ```
