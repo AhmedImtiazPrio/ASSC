@@ -23,3 +23,5 @@ Use the train.py file to train the proposed Resnet-34 Architecture for end-to-en
 ```
 python train.py FpzCz.csv 5 --epochs 200 --batch_size 64
 ```
+
+#### For issues contact sushmit0109@gmail.com
