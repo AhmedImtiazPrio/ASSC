@@ -6,4 +6,4 @@ codes/.idea/*
 models/*
 logs/*
 data/*
-results.csv
+*.csv
