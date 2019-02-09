@@ -23,8 +23,6 @@ from sklearn.metrics import confusion_matrix
 from sklearn.utils import class_weight
 
 from modules import *
-#from utils import *
-
 
 
 def standardnormalization(distribution):
@@ -87,12 +85,6 @@ def results_log(results_file, log_dir, log_name, params):
     df2 = pd.concat([df, a], axis=0)
     df2.to_csv(results_file, index=False)
     print("saving results to csv")
-    #print(params['class_weight'])
-
-
-
-
-
 
 
 def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s2Reduction=False, s2RedSize=0.0):
@@ -176,16 +168,6 @@ class log_metrics( Callback):
 
             predY = self.model.predict(self.valX, verbose=0)
             predY = np.argmax(predY, axis=-1)
-            # predY = np.expand_dims(predY, axis=1)
-
-            # patAcc = []
-            # print("printing the shape of predY")
-            # print(predY.shape)
-
-            # for pat in np.unique(self.patID).astype(int):
-            #     mask = self.patID == pat
-            #     patAcc.append(accuracy_score(self.valY[mask], predY[mask]))
-            #logs['PerPatientAccuracy'] = np.mean(patAcc)
 
             ##################################################################
 
@@ -213,127 +195,10 @@ class log_metrics( Callback):
                 logs['ST-Sens'] = np.mean(sens)
                 logs['ST-Spec'] = np.mean(spec)
                 logs['ST-Acc'] = np.mean(acc)
-            #
-            # # perClassSens= []
-            # # perClassSpec = []
-            # # correctedtrueY = self.valY - 1
-            # # for each_class in np.unique(correctedtrueY):
-            # #     mask = correctedtrueY == each_class
-            # #     confMat = confusion_matrix(correctedtrueY[mask], predY[mask])
-            # #     perClassSens.append(confMat[each, each] / sum(confMat[each, :]))
-            # #     perClassSpec.append((match-confMat[each, each])/ ((match - confMat[each, each] + sum(confMat[:, each]) - confMat[each, each])))
-            # #
-            # # patsens = []
-            # # patspec = []
-            # #
-            # #
-            # # for each in np.unique(dummyvalY).astype(int):
-            # #     each = int(each)
-            # #     patsens.append(confMat[each, each] / sum(confMat[each, :]))
-            # #     patspec.append((match - confMat[each, each]) / (
-            # #     (match - confMat[each, each] + sum(confMat[:, each]) - confMat[each, each])))
-            # #
-            # # acc = match / len(self.valY)
-            #
-            # # patAcc = []
-            # # for pat in np.unique(self.patID).astype(int):
-            # #     mask = self.patID[:, 0] == pat
-            # #     patAcc.append(accuracy_score(self.valY[mask] - 1, predY[mask]))
-            # #
-            # patAccAvg = np.mean(patAcc)
-            # print("patient accuracy is")
-            # print(patAccAvg)
-            #
-            # perClassAcc= []
-            # perClassSens = []
-            # perClassSpec = []
-            # correctedtrueY = self.valY
-            # print(correctedtrueY.shape)
-            # print(np.unique(correctedtrueY))
-            # print(np.unique(predY))
-            # for each_class in np.unique(correctedtrueY):
-            #     print("fjskdjfh")
-            #     each_class = int(each_class)
-            #     mask = correctedtrueY == each_class
-            #     totalcandidatesforthatclass = sum(mask)
-            #     print(totalcandidatesforthatclass)
-            #     match = sum(correctedtrueY[mask] == predY[mask])
-            #
-            #     print(match)
-            #     acc = match / totalcandidatesforthatclass
-            #     print(acc)
-            #     perClassAcc.append(acc)
-            #
-            #     #     tp = match
-            #     #     tn = sum(correctedtrueY[~mask] - sum(correctedtrueY[~mask]== each_class)
-            #     #     fp = sum([])
-            #     #     fn =
-            #
-            #     #perClassSens.append(match / totalcandidatesforthatclass)
-            #     #perClassSens.append()
-            #
-            #     # confMat = confusion_matrix(correctedtrueY[mask], predY[mask])
-            #     # print(confMat)
-            #     print("done")
-            #     # perClassSens.append(confMat[each_class, each_class] / sum(confMat[each_class, :]))
-            #     # perClassSpec.append((match-confMat[each_class, each_class])/ ((match - confMat[each_class, each_class] + sum(confMat[:, each_class]) - confMat[each_class, each_class])))
-            # #print(perClassSens)
-            # #print(perClassSpec)
-            #
-            #
-            #
-            #
-            #
-            #
-            #
-            #
-            #  #######################   LOGGING  #############################################
-            # logs['PerPatientAccuracy'] = np.mean(patAcc)
-            # # logs['PerPatientSensitivity'] = np.mean(patsens)
-            # # logs['PerPatientSpecificity'] = np.mean(patspec)
-            # #
-            # # logs['PerClassSensitivity'] = np.mean(perClassSens)
-            # # logs['PerClassSpecificity'] = np.mean(perClassSpec)
-            # #
-            # # logs['pat1Specificity'] = patspec[0]
-            # # logs['s2Specificity'] = patspec[1]
-            # # logs['s3Specificity'] = patspec[2]
-            # # logs['s4Specificity'] = patspec[3]
-            # # logs['REMSpecificity'] = patspec[4]
-            # # logs['WakeSpecificity'] = patspec[5]
-            # #
-            # # logs['s1Sensitivity'] = patsens[0]
-            # # logs['s2Sensitivity'] = patsens[1]
-            # # logs['s3Sensitivity'] = patsens[2]
-            # # logs['s4Sensitivity'] = patsens[3]
-            # # logs['REMSensitivity'] = patsens[4]
-            # # logs['WakeSensitivity'] = patsens[5]
-            # #
-            # #
-            # logs['s1Acc'] = perClassAcc[0]
-            # logs['s2Acc'] = perClassAcc[1]
-            # logs['s3Acc'] = perClassAcc[2]
-            # logs['s4Acc'] = perClassAcc[3]
-            # logs['REMAcc'] = perClassAcc[4]
-            # logs['WakeAcc'] = perClassAcc[5]
-            #
-            # logs['patientSpecificity'] = np.mean(patspec)
-            # logs['patientSenssitivity'] = np.mean(patsens)
-            # #
-
-            #################################################################################
-
-            # np.savetxt(self.patlogDirectory + "epoch" + str(self.global_epoch_counter)+"patAcc.csv", patAcc, delimiter=",")
-            # np.savetxt(self.patlogDirectory+"patients.csv", self.patID, delimiter=",")
-
-            #self.patID.to_csv(self.patlogDirectory+"patients.csv", index=False)
 
             self.global_epoch_counter = self.global_epoch_counter +1
             global_epoch_counter = self.global_epoch_counter
 
-
-
-            ##############
             lr = self.model.optimizer.lr
             if self.model.optimizer.initial_decay > 0:
                 lr *= (1. / (1. + self.model.optimizer.decay * K.cast(self.model.optimizer.iterations, K.dtype(self.model.optimizer.decay))))

@@ -27,7 +27,7 @@ from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger
 import pandas as pd
 
 from modules import *
-from fiveclassutils import *
+from AASMutils import *
 from AudioDataGenerator import *
 
 from sklearn.preprocessing import StandardScaler
