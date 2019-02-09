@@ -21,8 +21,18 @@ import pandas as pd
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.utils import class_weight
-
 from modules import *
+from keras.callbacks import LearningRateScheduler
+
+def step_decay(global_epoch_counter):
+    lrate = .001
+    if global_epoch_counter > 10:
+        lrate = .001 / 10
+        if global_epoch_counter > 20:
+            lrate = .001 / 100
+    return lrate
+
+lrate = LearningRateScheduler(step_decay)
 
 
 def standardnormalization(distribution):
@@ -40,7 +50,7 @@ def compute_weight(Y, classes):
     Y = Y.astype(int)
     Y = np.expand_dims(Y, axis=1)
     num_bin = np.bincount(Y[:, 0])
-    class_weights = {i: (num_samples / (n_classes * num_bin[i])) for i in range(6)}
+    class_weights = {i: (num_samples / (n_classes * num_bin[i])) for i in range(5)}
     return class_weights
 
 def patientSplitter(randomIDfile,df2,split_portion, totalPat = 61):
@@ -87,51 +97,54 @@ def results_log(results_file, log_dir, log_name, params):
     print("saving results to csv")
 
 
-def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s2Reduction=False, s2RedSize=0.0):
+def epoch_reduction(trainX, trainY, num_class=5, wakeReduction=False, wakeRedSize=0.0,
+                    s2Reduction=False, s2RedSize=0.0):
 
-    if(wakeReduction):
-        wakecount = 0
-        trainwakemask = trainY == 6
-        for i in range(0, len(trainwakemask)):
-            if trainwakemask[i] == 1:
-                wakecount = wakecount + 1
-        print(wakecount)
-        willdeletewake = int(wakecount*wakeRedSize)
+    if num_class == 5:
+        if wakeReduction:
+            mask = trainY == 5
+            wakeidx = np.nonzero(mask)[0]
+            dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * wakeRedSize), replace=False)
+            trainX = np.delete(trainX, dropidx, axis=0)
+            trainY = np.delete(trainY, dropidx, axis=0)
 
-        for i in range(willdeletewake, len(trainwakemask)):
-            trainwakemask[i] = 0
-        trainwakemask = ~trainwakemask
-        trainX = trainX[trainwakemask]
-        trainY = trainY[trainwakemask]
+        if s2Reduction:
+            mask = trainY == 2
+            wakeidx = np.nonzero(mask)[0]
+            dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * s2RedSize), replace=False)
+            trainX = np.delete(trainX, dropidx, axis=0)
+            trainY = np.delete(trainY, dropidx, axis=0)
 
-    if (s2Reduction):
-        s2count = 0
-        trains1mask = trainY == 2
-        for i in range(0, len(trains1mask)):
-            if trains1mask[i] == 1:
-                s2count = s2count + 1
-        print(s2count)
-        willdeletes1 = int(s2count * s2RedSize)
+    else:
 
-        for i in range(willdeletes1, len(trains1mask)):
-            trains1mask[i] = 0
+        if wakeReduction:
+            mask = trainY == 6
+            wakeidx = np.nonzero(mask)[0]
+            dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * wakeRedSize), replace=False)
+            trainX = np.delete(trainX, dropidx, axis=0)
+            trainY = np.delete(trainY, dropidx, axis=0)
 
-        trains1mask = ~trains1mask
-        trainX = trainX[trains1mask]
-        trainY = trainY[trains1mask]
+        if s2Reduction:
+            mask = trainY == 2
+            wakeidx = np.nonzero(mask)[0]
+            dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * s2RedSize), replace=False)
+            trainX = np.delete(trainX, dropidx, axis=0)
+            trainY = np.delete(trainY, dropidx, axis=0)
 
     return trainX, trainY
 
 
 class log_metrics( Callback):
     def __init__(self, valX, valY, patID, patlogDirectory, global_epoch_counter, **kwargs):
-        self.valY = np.argmax(valY, axis=-1)
-        # self.valY = np.expand_dims(self.valY, axis=1)
-        self.valX = valX
+
         self.patID = patID
         super(log_metrics,self).__init__(**kwargs)
         self.patlogDirectory = patlogDirectory
         self.global_epoch_counter = global_epoch_counter
+        self.valY = np.argmax(valY, axis=-1)
+        # self.valY = np.expand_dims(self.valY, axis=1)
+        self.valX = valX - np.mean(valX, keepdims=True)
+        self.valX /= (np.std(self.valX,keepdims=True) + K.epsilon())
 
     def accuracy_score(self,true,predY):
         match = sum(predY == true)
@@ -169,8 +182,6 @@ class log_metrics( Callback):
             predY = self.model.predict(self.valX, verbose=0)
             predY = np.argmax(predY, axis=-1)
 
-            ##################################################################
-
             sens,spec,acc = self.calcMetrics(predY)
 
             for sens_,spec_,acc_,class_ in zip(sens,spec,acc,set(self.valY)):
@@ -197,13 +208,13 @@ class log_metrics( Callback):
                 logs['ST-Acc'] = np.mean(acc)
 
             self.global_epoch_counter = self.global_epoch_counter +1
-            global_epoch_counter = self.global_epoch_counter
 
+            ##############
             lr = self.model.optimizer.lr
             if self.model.optimizer.initial_decay > 0:
-                lr *= (1. / (1. + self.model.optimizer.decay * K.cast(self.model.optimizer.iterations, K.dtype(self.model.optimizer.decay))))
+                lr *= (1. / (1. + self.model.optimizer.decay * K.cast(self.model.optimizer.iterations,
+                                                                      K.dtype(self.model.optimizer.decay))))
             t = K.cast(self.model.optimizer.iterations, K.floatx()) + 1
             lr_t = lr * (K.sqrt(1. - K.pow(self.model.optimizer.beta_2, t)) / (1. - K.pow(self.model.optimizer.beta_1, t)))
             logs['lr'] = np.array(float(K.get_value(lr_t)))
-            #logs['lr'] = self.model.optimizer.lr
 
