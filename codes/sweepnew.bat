@@ -1,0 +1,5 @@
+python 5classtrain.py 5casetted50ks1w10s10 --seed 5 --epochs 35 --batch_size 64 --verbose 2 --wakeReduction True --wakeRedSize 0.1 --s2Reduction True --s2RedSize 0.1 
+python 5classtrain.py 5casetted50ks1w30s30 --seed 5 --epochs 35 --batch_size 64 --verbose 2 --wakeReduction True --wakeRedSize 0.3 --s2Reduction True --s2RedSize 0.3 
+python 5classtrain.py 5casetted50ks1w50s50 --seed 5 --epochs 35 --batch_size 64 --verbose 2 --wakeReduction True --wakeRedSize 0.5 --s2Reduction True --s2RedSize 0.5 
+python 5classtrain.py 5casetted50ks1w70s70 --seed 5 --epochs 35 --batch_size 64 --verbose 2 --wakeReduction True --wakeRedSize 0.7 --s2Reduction True --s2RedSize 0.7 
+python 5classtrain.py 5casetted50ks1w90s90 --seed 5 --epochs 35 --batch_size 64 --verbose 2 --wakeReduction True --wakeRedSize 0.9 --s2Reduction True --s2RedSize 0.9 

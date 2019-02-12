@@ -89,16 +89,16 @@ def results_log(results_file, log_dir, log_name, params):
     #print(params['class_weight'])
 
 
-def epoch_reduction(trainX, trainY, wakeReduction=False, wakeRedSize=0.0, s2Reduction=False, s2RedSize=0.0):
+def epoch_reduction(trainX, trainY, wakeRedSize=0.0, s2RedSize=0.0):
 
-    if wakeReduction:
+    if wakeRedSize:
         mask = trainY == 5
         wakeidx = np.nonzero(mask)[0]
         dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * wakeRedSize), replace=False)
         trainX = np.delete(trainX, dropidx, axis=0)
         trainY = np.delete(trainY, dropidx, axis=0)
 
-    if s2Reduction:
+    if s2RedSize:
         mask = trainY == 2
         s2idx = np.nonzero(mask)[0]
         dropidx = np.random.choice(s2idx, size=int(s2idx.shape[0] * s2RedSize), replace=False)
@@ -115,10 +115,24 @@ class log_metrics( Callback):
         super(log_metrics,self).__init__(**kwargs)
         self.patlogDirectory = patlogDirectory
         self.global_epoch_counter = global_epoch_counter
+
+
         self.valY = np.argmax(valY, axis=-1)
+
+
         # self.valY = np.expand_dims(self.valY, axis=1)
-        self.valX = valX - np.mean(valX, keepdims=True)
-        self.valX /= (np.std(self.valX,keepdims=True) + K.epsilon())
+
+
+
+
+########### Only activated when Using Data Generator #################################
+        # self.valX = valX - np.mean(valX, keepdims=True)
+        # self.valX /= (np.std(self.valX,keepdims=True) + K.epsilon())
+##############################################################################
+
+
+
+
 
     def accuracy_score(self,true,predY):
         match = sum(predY == true)

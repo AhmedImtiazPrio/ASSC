@@ -6,3 +6,9 @@ codes/.idea/*
 models/*
 logs/*
 data/*
+codes/*.csv
+codes/.ipynb_checkpoints/*
+codes/__pycache__/*
+*.csv
+*.xlsx
+codes/Untitled*
