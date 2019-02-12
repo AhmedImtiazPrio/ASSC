@@ -19,6 +19,7 @@ from keras.optimizers import Adamax as opt
 from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger, Callback
 import pandas as pd
 # from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
 from sklearn.metrics import confusion_matrix
 from sklearn.utils import class_weight
 from modules import *
@@ -167,7 +168,6 @@ class log_metrics( Callback):
             try:
                 SC_mask = self.patID < 39
                 patAcc = []
-
                 for pat in np.unique(self.patID[SC_mask]).astype(int):
                     mask = self.patID[:, 0] == pat
                     acc = self.accuracy_score(self.valY[mask], predY[mask])
@@ -189,13 +189,10 @@ class log_metrics( Callback):
                 print("bleh. Nevermind. Subscibe to Jackspedicey")
 
 
-
-            # print(self.accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0]))
             logs['SC_val_epoch_acc'] = self.accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0])
-            # print(self.accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1]))
+            logs['SC_val_epoch_f1'] = f1_score(self.valY[self.valDom == 0], predY[self.valDom == 0])
             logs['ST_val_epoch_acc'] = self.accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1])
-
-
+            logs['ST_val_epoch_f1'] = f1_score(self.valY[self.valDom == 1],predY[self.valDom == 1])
 
             # sens,spec,acc = self.calcMetrics(predY)
 
