@@ -230,12 +230,12 @@ if __name__ == '__main__':
     print("Number of Patients in Train %d" % (len(np.unique(pat_train))))
     print("Number of Patients in Val %d" % (len(np.unique(pat_val))))
     # For sigmoid activation with binary_crossentropy
-    mask = pat_train > 39
+    mask = pat_train[:,0] >= 39
     trainDom = mask.astype(int)
-    print("Domain counts in train {}".format(Counter(trainDom)))
-    mask = pat_val > 39
+    print(Counter(trainDom))
+    mask = pat_val[:,0] >= 39
     valDom = mask.astype(int)
-    print("Domain counts in val {}".format(Counter(valDom)))
+    print(Counter(valDom))
 
     # df2 = []
     del df2

@@ -162,15 +162,38 @@ class log_metrics( Callback):
 
             predY = self.model.predict(self.valX, verbose=0)
             predY = np.argmax(predY[0], axis=-1)
+
+
             try:
-                print(self.valY.shape)
-                print(predY.shape)
+                SC_mask = self.patID < 39
+                patAcc = []
+
+                for pat in np.unique(self.patID[SC_mask]).astype(int):
+                    mask = self.patID[:, 0] == pat
+                    acc = self.accuracy_score(self.valY[mask], predY[mask])
+                    patAcc.append(acc)
+                print("Per Patient SC Accuracy is:")
+                print(np.mean(patAcc))
+                logs['SC_val_pat_acc']=np.mean(patAcc)
+
+                patAcc = []
+
+                for pat in np.unique(self.patID[~SC_mask]).astype(int):
+                    mask = self.patID[:, 0] == pat
+                    acc = self.accuracy_score(self.valY[mask], predY[mask])
+                    patAcc.append(acc)
+                print("Per Patient ST Accuracy is:")
+                print(np.mean(patAcc))
+                logs['ST_val_pat_acc'] = np.mean(patAcc)
             except:
-                print("ValY is a list")
-            print(self.accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0]))
-            # logs['SC_acc'] = accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0])
-            print(self.accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1]))
-            # logs['ST_acc'] = accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1])
+                print("bleh. Nevermind. Subscibe to Jackspedicey")
+
+
+
+            # print(self.accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0]))
+            logs['SC_val_epoch_acc'] = self.accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0])
+            # print(self.accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1]))
+            logs['ST_val_epoch_acc'] = self.accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1])
 
 
 

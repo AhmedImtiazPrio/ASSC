@@ -1,5 +1,5 @@
-python advtrain.py dummyadvhp001 --epochs 17 --batch_size 64 --hp_lambda 0.01
-python advtrain.py dummyadvhp005 --epochs 17 --batch_size 64 --hp_lambda 0.05
+REM python advtrain.py dummyadvhp001 --epochs 17 --batch_size 64 --hp_lambda 0.01
+REM python advtrain.py dummyadvhp005 --epochs 17 --batch_size 64 --hp_lambda 0.05
 python advtrain.py dummyadvhp10 --epochs 17 --batch_size 64 --hp_lambda 0.1
 python advtrain.py dummyadvhp50 --epochs 17 --batch_size 64 --hp_lambda 0.5
 python advtrain.py dummyadvhp100 --epochs 17 --batch_size 64 --hp_lambda 1.0
