@@ -18,7 +18,7 @@ from keras.models import Model
 from keras.optimizers import Adamax as opt
 from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger, Callback
 import pandas as pd
-from sklearn.metrics import accuracy_score
+# from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.utils import class_weight
 from modules import *
@@ -162,10 +162,14 @@ class log_metrics( Callback):
 
             predY = self.model.predict(self.valX, verbose=0)
             predY = np.argmax(predY[0], axis=-1)
-
-            print(accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0]))
+            try:
+                print(self.valY.shape)
+                print(predY.shape)
+            except:
+                print("ValY is a list")
+            print(self.accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0]))
             # logs['SC_acc'] = accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0])
-            print(accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1]))
+            print(self.accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1]))
             # logs['ST_acc'] = accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1])
 
 

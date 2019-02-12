@@ -227,14 +227,15 @@ if __name__ == '__main__':
     # trainDom = to_categorical(mask.astype(int), 2)
     # mask = pat_val > 39
     # valDom = to_categorical(mask.astype(int), 2)
-
+    print("Number of Patients in Train %d" % (len(np.unique(pat_train))))
+    print("Number of Patients in Val %d" % (len(np.unique(pat_val))))
     # For sigmoid activation with binary_crossentropy
     mask = pat_train > 39
     trainDom = mask.astype(int)
-    print(np.unique(trainDom))
+    print("Domain counts in train {}".format(Counter(trainDom)))
     mask = pat_val > 39
     valDom = mask.astype(int)
-    print(np.unique(valDom))
+    print("Domain counts in val {}".format(Counter(valDom)))
 
     # df2 = []
     del df2
@@ -400,7 +401,8 @@ if __name__ == '__main__':
                             shuffle=True,
                             # seed=params['random_seed'],
                             # steps_per_epoch=4,
-                            epochs=params['epochs'],
+                            # epochs=params['epochs'],
+                            epochs=30,
                             validation_data=(valX, [valY,valDom]),
                             callbacks=[modelcheckpnt,
                                        # log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
