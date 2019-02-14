@@ -194,8 +194,10 @@ if __name__ == '__main__':
     #RS-task
     trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('randomizedIDsfinal.csv', df2, 0.7, 61)
 
-    # trainX = standardnormalization(trainX)
-    # valX = standardnormalization(valX)
+    trainX -= np.mean(trainX,keepdims=True)
+    trainX /= np.std(trainX,keepdims=True)
+    valX -= np.mean(valX,keepdims=True)
+    valX /= np.std(valX,keepdims=True)
 
     ############# Making 5 Class Data ############################
 
@@ -319,9 +321,9 @@ if __name__ == '__main__':
     tensdir = log_dir + "/" + log_name + "/"
     tensdir = tensdir.replace('/', "\\")
 
-    tensbd = TensorBoard(log_dir=tensdir, batch_size=batch_size,
-                         # histogram_freq=1,
-                         write_grads=True,)
+    tensbd = TensorBoard(log_dir=tensdir, batch_size=batch_size,write_grads=True,)
+
+    # tensbd.set_model(model)
 
     print("Tensorboard initialization: Done")
 
@@ -402,7 +404,7 @@ if __name__ == '__main__':
                             # seed=params['random_seed'],
                             # steps_per_epoch=4,
                             # epochs=params['epochs'],
-                            epochs=30,
+                            epochs=22,
                             validation_data=(valX, [valY,valDom]),
                             callbacks=[modelcheckpnt,
                                        # log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),

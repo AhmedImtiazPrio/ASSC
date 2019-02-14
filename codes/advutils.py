@@ -185,14 +185,19 @@ class log_metrics( Callback):
                 print("Per Patient ST Accuracy is:")
                 print(np.mean(patAcc))
                 logs['ST_val_pat_acc'] = np.mean(patAcc)
+
+                ## Domain specific, classwise-average f1
+                logs['SC_val_epoch_f1'] = f1_score(self.valY[self.valDom == 0], predY[self.valDom == 0],
+                                                   labels=range(4),average='macro')
+                logs['ST_val_epoch_f1'] = f1_score(self.valY[self.valDom == 1], predY[self.valDom == 1],
+                                                   labels=range(4),average='macro')
             except:
                 print("bleh. Nevermind. Subscibe to Jackspedicey")
 
 
             logs['SC_val_epoch_acc'] = self.accuracy_score(self.valY[self.valDom == 0],predY[self.valDom == 0])
-            logs['SC_val_epoch_f1'] = f1_score(self.valY[self.valDom == 0], predY[self.valDom == 0])
             logs['ST_val_epoch_acc'] = self.accuracy_score(self.valY[self.valDom == 1],predY[self.valDom == 1])
-            logs['ST_val_epoch_f1'] = f1_score(self.valY[self.valDom == 1],predY[self.valDom == 1])
+
 
             # sens,spec,acc = self.calcMetrics(predY)
 
