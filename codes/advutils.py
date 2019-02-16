@@ -231,8 +231,8 @@ class log_metrics( Callback):
 
             #self.patID.to_csv(self.patlogDirectory+"patients.csv", index=False)
 
-            self.global_epoch_counter = self.global_epoch_counter +1
-            global_epoch_counter = self.global_epoch_counter
+            # self.global_epoch_counter = self.global_epoch_counter +1
+            # global_epoch_counter = self.global_epoch_counter
 
             ##############
             lr = self.model.optimizer.lr

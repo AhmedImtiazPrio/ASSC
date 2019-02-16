@@ -242,8 +242,6 @@ if __name__ == '__main__':
     # df2 = []
     del df2
 
-
-
     trainX, trainY = epoch_reduction(trainX, trainY, wakeRedSize, s2RedSize)
 
 
@@ -399,12 +397,12 @@ if __name__ == '__main__':
         #        callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter), csv_logger, tensbd],
         #       batch_size=64, epochs=params['epochs'])
 
-        model.fit(trainX, [trainY,trainDom], batch_size=params['batch_size'],
+        model.fit(trainX[:64], [trainY[:64],trainDom[:64]], batch_size=params['batch_size'],
                             shuffle=True,
                             # seed=params['random_seed'],
                             # steps_per_epoch=4,
                             # epochs=params['epochs'],
-                            epochs=22,
+                            epochs=params['epochs'],
                             validation_data=(valX, [valY,valDom]),
                             callbacks=[modelcheckpnt,
                                        # log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
