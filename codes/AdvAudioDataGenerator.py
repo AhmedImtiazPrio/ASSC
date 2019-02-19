@@ -20,68 +20,84 @@ class Iterator(object):
         seed: Random seeding for data shuffling.
     """
 
-    def __init__(self, n, y, target_y, batch_size, shuffle, seed): # add target y to init(s)
-        self.y = y
+    def __init__(self, n, target_y, batch_size, shuffle, seed): # add target y to init(s)
+
+        self.target_y=target_y
         self.n = n
-        self.batch_size = batch_size
         self.shuffle = shuffle
         self.batch_index = 0
         self.total_batches_seen = 0
         self.lock = threading.Lock()
-        self.index_generator = self._flow_index(n, batch_size, shuffle, seed)
-        self.current_pos = [0] * (np.unique(self.y[target_y])) ## target Y er number of uniques
-        self.exhaustion = [False] * (np.unique(self.y[target_y]))  ###### সাত জনের ই এক্সহসন ফলস শুরুতে। এক এক জনের এক্সহসন হলে সেইটা করে ট্রু হতে থাকবে। সবগুলা ট্রু হলে ইল্ড ব্রেক, রিসেট শাফল।
+        self.index_generator = self._flow_index(batch_size, shuffle=shuffle, seed=seed)
+        self.current_idx = [0] * len(np.unique(self.y[self.target_y])) ## target Y er number of uniques
+        self.exhaustion = [False] * len(np.unique(self.y[self.target_y]))  ###### সাত জনের ই এক্সহসন ফলস শুরুতে। এক এক জনের এক্সহসন হলে সেইটা করে ট্রু হতে থাকবে। সবগুলা ট্রু হলে ইল্ড ব্রেক, রিসেট শাফল।
 
-    def reset(self, target_y):
+    def reset(self):
         self.batch_index = 0
-        self.exhaustion = [False] * (np.unique(self.y[target_y]))
-        self.current_pos = [0] * (np.unique(self.y[target_y]))
+        self.exhaustion = [False] * len(np.unique(self.y[self.target_y]))
+        self.current_idx = [0] * len(np.unique(self.y[self.target_y]))
 
 
-        #এখানে আরো কিছু ইন্ডেক্স জিরো হবে এবং ইত্যাদি ###
-
-############################################################################################################################
-    ######################################################################################################################
-
-
-    def _flow_index(self, n, y, target_y, batch_size=32, shuffle=False, seed=None): ######## শুধু স্যাম্পল সংখ্যা যথেস্ট না এখানে। ওয়াই সবগুলাও দিতে হবে। সাথে কোন ওয়াই এর উপরে বেইজ করে ব্যাচ বানাবো সেইটাও।
+    def _flow_index(self, batch_size=32, shuffle=False, seed=None): ######## শুধু স্যাম্পল সংখ্যা যথেস্ট না এখানে। ওয়াই সবগুলাও দিতে হবে। সাথে কোন ওয়াই এর উপরে বেইজ করে ব্যাচ বানাবো সেইটাও।
         # Ensure self.batch_index is 0.
         self.reset()
         while 1:
             if seed is not None:
-                np.random.seed(seed + self.total_batches_seen)  ####### SEEEEEED চেঞ্জ হচ্ছে নতুন ব্যপার স্যপারের জন্য ##########
+                np.random.seed(seed + self.total_batches_seen)
 
-            # সাব ক্লাস গুলা আলাদা করা
-            if self.batch_index == 0:            ######## যদি ব্যাচ কাটাকাটির একেবারে শুরু তে থাকে এইটা,
-                index_array = []
-                n_cls = np.unique(y[target_y])
-                sub_class = []
-                ## handle if categorical in np.where
-                for cls in n_cls:
-                    sub_class.append(np.where(np.argmax(y[target_y],axis=-1) == cls))
-            # কাউন্টিং নাম্বার অফ মেম্বারস ইন থে ইন্ডেক্স শিট
-            # হয়ত আরো ভাল করে করা যায়, আপাতত থাক এটা
-            number_of_member_in_sub_class = []
-            for each in sub_class:
-                number_of_member_in_sub_class.append(len(each))
-            chunk_size = int(batch_size/ len(np.unique(self.y[target_y])))
-            warnings.warn('the batch size implemented here is')
-            print(chunk_size*(len(np.unique(self.y[target_y]))))
-
-            for i in range(len(np.unique(self.y[target_y]))):
-                if(number_of_member_in_sub_class[i] - self.current[i] >= chunk_size):
-                    index_array[i] = sub_class[i][self.current[i]:self.current[i]+chunk_size]
-                    self.current[i] = self.current[i] + chunk_size
+            if self.batch_index == 0:
+                bins = np.unique(self.y[self.target_y]) # unique bins in y[target_y]
+                bin_idx = []
+                for idx,each in enumerate(bins):
+                    bin_idx.append(np.hstack(np.where(self.y[self.target_y] == each)))
+                    if shuffle:
+                        bin_idx[idx] = np.random.permutation(bin_idx[idx]) # permute for first batch
+                bin_count = [len(each) for each in bin_idx]
+                # print(bin_count)
+                chunk_size = int(batch_size/ len(bins))
+                print('Chunk_size selected as %d' % chunk_size)
+            index_array = []
+            for idx,num in enumerate(bin_count):
+                # print(self.current_idx)
+                if (num - self.current_idx[idx]) >= chunk_size: ## if there is space in the current bin
+                    index_array = index_array + list(bin_idx[idx][self.current_idx[idx]:self.current_idx[idx]+chunk_size])
+                    self.current_idx[idx] += chunk_size
+                ## include remaining samples
                 else:
-                    self.exhaustion[i] = True
-                    self.current[i]=0
-                    random.shuffle(y[i])
-            self.batch_index += 1
+                    self.exhaustion[idx] = True
+                    self.current_idx[idx] = 0
+                    bin_idx[idx] = np.random.permutation(bin_idx[idx])
+                    index_array = index_array + list(bin_idx[idx][self.current_idx[idx]:self.current_idx[idx]+chunk_size])
+                    self.current_idx[idx] += chunk_size
+
             self.total_batches_seen += 1
             if all(self.exhaustion):
-                self.batch_index = 0
+                self.reset()
+            else:
+                self.batch_index += 1
+            print("Total batches seen %d" % self.total_batches_seen)
+            print("Batch Index %d" % self.batch_index)
+            print("Current Index %s" % str(self.current_idx))
+            yield index_array
 
-            yield(index_array)
+
+            #
+            #
+            # for i in range(len(self.y)):
+            #     if(class_count[i] - self.current[i] >= chunk_size):
+            #         index_array[i] = bin_idx[i][self.current[i]:self.current[i]+chunk_size]
+            #         self.current[i] = self.current[i] + chunk_size
+            #     else:
+            #         self.exhaustion[i] = True
+            #         self.current[i]=0
+            #         random.shuffle(self.y[i])
+            # self.batch_index += 1
+            # self.total_batches_seen += 1
+            # if all(self.exhaustion):
+            #     self.batch_index = 0
+            # #print(self.flag)
+            # print(index_array)
+            # yield(index_array)
 
     ############################################################################################################################
     ######################################################################################################################
@@ -127,35 +143,18 @@ class NumpyArrayIterator(Iterator):
             validation_split is set in AudioDataGenerator.
     """
 
-    def __init__(self, x, y, flag, audio_data_generator,
+    def __init__(self, x, y, target_y, flag, audio_data_generator,
                  batch_size=32, shuffle=False, seed=None,
                  data_format=None,
                  save_to_dir=None, save_prefix='', save_format='png',
                  subset=None):
 
-
-
-
-        ##########################################################################################################################
-        ##########################################################################################################################
-        ##########################################################################################################################
-        ##########################################################################################################################
-
-
-        #self.y = y
         self.flag = flag
-        number_of_branches = np.shape(y)[0]
-        sizes_of_branches = []
-        for each in y:
-            sizes_of_branches.append(np.shape(each)) ## handle categorical/non-categorical labels in list of y
-        count = np.unique(sizes_of_branches)
-        if count.size !=1 and len(x) != count[0]:
-            raise ValueError(
-                '`x` (audio tensor) and `y` (labels) '  ###### চিল্লাপাল্লা কর যে ডেটার সংখ্যা আর লেবেলের সংখ্যা মেলে না #########
-                'should have the same length. '
-                'Found: x.shape = %s, y.shape = %s' %
-                (np.asarray(x).shape, np.asarray(y).shape))
-
+        sizes_of_branches = [len(each) for each in y] ## handle categorical/non-categorical labels in list of y
+        # print(sizes_of_branches)
+        sizes_of_branches += [len(x)]
+        if len(np.unique(sizes_of_branches))>1:
+            raise ValueError('Non coherent input shapes')
 
         if subset is not None: ######### সাবসেটের নাম হবে হয় ট্রেইনিং না হয় ভ্যালিডেশন। অন্য রহিম করিম দিলে চিল্লাপাল্লা হবে এখানে ########
             if subset not in {'training', 'validation'}:
@@ -176,7 +175,6 @@ class NumpyArrayIterator(Iterator):
         if data_format is None:
             data_format = 'channels_last' ########## কিছু না বললে চ্যানেল লাস্টে আছে।
         self.x = np.asarray(x, dtype=K.floatx()) ####### ডেটা কে ফ্লোট ওয়ালা নাম্পাই এরে তে টাইপকাস্ট করা হল। #######
-
         self.y = y
 
         if self.x.ndim != 3:          ###### কাহিনী
@@ -187,12 +185,9 @@ class NumpyArrayIterator(Iterator):
         if self.x.shape[channels_axis] not in {1, 2, 3, 4}: ###########  বুঝি নাই ###############
             warnings.warn('NumpyArrayIterator is set to use the '
                           'data format convention "' + data_format + '" '
-                                                                     '(channels on axis ' + str(
-                channels_axis) + '), i.e. expected '
-                                 'either 1, 3 or 4 channels on axis ' + str(channels_axis) + '. '
-                                                                                             'However, it was passed an array with shape ' + str(
-                self.x.shape) +
-                          ' (' + str(self.x.shape[channels_axis]) + ' channels).')
+                          '(channels on axis ' + str(channels_axis) + '), i.e. expected '
+                          'either 1, 3 or 4 channels on axis ' + str(channels_axis) + '. '
+                          'However, it was passed an array with shape ' + str(self.x.shape) +' (' + str(self.x.shape[channels_axis]) + ' channels).')
 
         if self.y is not None:
             for i in range(np.shape(self.y)[0]):
@@ -207,7 +202,7 @@ class NumpyArrayIterator(Iterator):
         self.save_to_dir = save_to_dir
         self.save_prefix = save_prefix
         self.save_format = save_format
-        super(NumpyArrayIterator, self).__init__(x.shape[0], batch_size, shuffle, seed) ##### সুপার কে ডেকে ইনিশিয়ালাইজ করা হল ######
+        super(NumpyArrayIterator, self).__init__(x.shape[0], target_y, batch_size, shuffle, seed) ##### সুপার কে ডেকে ইনিশিয়ালাইজ করা হল ######
 
     #          ####নিচের লাইনের এক্সপ্লানেশন ####
     #        >> > a = np.zeros(tuple([3] + [4]))
@@ -227,27 +222,27 @@ class NumpyArrayIterator(Iterator):
         if self.save_to_dir: ###### ডিরেক্টরি তে এখনো সেভ করা হচ্ছে না। চাইলে করাই যায়। পরে দেখি ##############
             raise NotImplementedError #### এনক্রিপ্টেড এরর #########
 
-        if self.y is None: ######### যদি কিছু না থাকে লেবেলে,
-            return batch_x ############ তাহলে
+        if self.y is None:
+            return batch_x
 
-        batch_y = []
+        batch_y = [each[index_array] for each in self.y]
 
-        for i in range(np.shape(self.y)[0]):
-            batch_y = batch_y.append(self.y[i][index_array])
-
-            if self.flag[i]==1:
-                batch_y[i] = tf.keras.utils.to_categorical(batch_y[i])
-                ### এই ভদ্রলোক ক্যাটাগোরিকাল ছিলেন।
-            if self.flag[i]==2:
-                print()
-                #print("Leave this one")
-            if self.flag[i]==3:
-                batch_y[i][:, 0] = batch_y[i]
+        if self.flag==1:
+            batch_y[self.target_y] = tf.keras.utils.to_categorical(batch_y[self.target_y])
+        if self.flag==2:
+            print()
+        if self.flag==3:
+            print()
+ #               batch_y[i] = batch_y[i]
+#                batch_y[i] = batch_y[i][:, 0]
                 ## এর কাছে শুরুতে ছিল শুধু কমা।
             ####### সবাইকে আগের জায়গায় ফিরিয়ে দেওয়া হল। #########
-
+        #print(batch_x)
+        #print(batch_y)
 
         #batch_y = self.y[index_array]
+        if len(batch_y)==1:
+            batch_y=batch_y[0]
         return batch_x, batch_y
 
     def next(self):
@@ -407,7 +402,7 @@ class AudioDataGenerator(object):
             if noise[-1] not in {'Uniform', 'Normal'}:
                 raise ValueError('Distribution not recognised', noise[-1])
 
-    def flow(self, x, y=None, batch_size=32, shuffle=True, seed=None,
+    def flow(self, x, y=None, target_y=0, batch_size=32, shuffle=True, seed=None,
              save_to_dir=None, save_prefix='', save_format='png', subset=None):
         """Takes numpy data & label arrays, and generates batches of
             augmented/normalized data.
@@ -436,24 +431,26 @@ class AudioDataGenerator(object):
                           '`noise`, which overrides the setting of'
                           '`shuffle` as True'
                           )
+        ## handle if y is not a list
+        if not type(y) == 'list':
+            y = [y]
 
-        flag = []
-        for i in range(3):
-            try:
-                if (y[i].shape[1] > 1):
-                    flag.append(1)
-                    y[i] = np.argmax(y[i], axis=-1)
+        try:
+            if (y[target_y].shape[1] > 1):
+                flag = 1
+                y[target_y] = np.argmax(y[target_y], axis=-1)
 
-                else:
-                    flag.append(2)
-                    y[i] = np.argmax(y[i], axis=-1)
+            else:
+                flag = 2
+                y[target_y] = np.argmax(y[target_y], axis=-1)
 
-            except:
-                flag.append(3)
-        #everything is of shape (n,)
+        except:
+            flag = 3
 
+        # print(flag)
+    # everything is of shape (n,)
         return NumpyArrayIterator(
-            x, y, flag, self,
+            x=x, y=y, target_y=target_y, flag=flag, audio_data_generator=self,
             batch_size=batch_size,
             shuffle=shuffle,
             seed=seed,

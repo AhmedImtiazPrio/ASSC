@@ -6,61 +6,6 @@ from scipy.signal import resample
 import keras.backend as K
 import warnings
 from scipy.ndimage.interpolation import shift
-#import threading
-# from six.moves import range
-#
-# class Iterator(object):
-#     """Abstract base class for image data iterators.
-#     # Arguments
-#         n: Integer, total number of samples in the dataset to loop over.
-#         batch_size: Integer, size of a batch.
-#         shuffle: Boolean, whether to shuffle the data between epochs.
-#         seed: Random seeding for data shuffling.
-#     """
-#
-#     def __init__(self, n, batch_size, shuffle, seed):
-#         self.n = n
-#         self.batch_size = batch_size
-#         self.shuffle = shuffle
-#         self.batch_index = 0
-#         self.total_batches_seen = 0
-#         self.lock = threading.Lock()
-#         self.index_generator = self._flow_index(n, batch_size, shuffle, seed)
-#
-#     def reset(self):
-#         self.batch_index = 0
-#
-#     def _flow_index(self, n, batch_size=32, shuffle=False, seed=None):
-#         # Ensure self.batch_index is 0.
-#         self.reset()
-#         while 1:
-#             if seed is not None:
-#                 np.random.seed(seed + self.total_batches_seen)
-#             if self.batch_index == 0:
-#                 index_array = np.arange(n)
-#                 if shuffle:
-#                     index_array = np.random.permutation(n)
-#
-#             current_index = (self.batch_index * batch_size) % n
-#             if n >= current_index + batch_size:
-#                 current_batch_size = batch_size
-#                 self.batch_index += 1
-#             else:
-#                 current_batch_size = n - current_index
-#                 self.batch_index = 0
-#             self.total_batches_seen += 1
-#             yield (index_array[current_index: current_index + current_batch_size],
-#                    current_index, current_batch_size)
-#
-#     def __iter__(self):
-#         # Needed if we want to do something like:
-#         # for x, y in data_gen.flow(...):
-#         return self
-#
-#     def __next__(self, *args, **kwargs):
-#         return self.next(*args, **kwargs)
-#
-#
 
 class NumpyArrayIterator(Iterator):
     """Iterator yielding data from a Numpy array.
