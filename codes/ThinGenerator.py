@@ -28,21 +28,23 @@ class Iterator(object):
         while 1:
             if seed is not None:
                 np.random.seed(seed + self.total_batches_seen) ####### SEEEEEED চেঞ্জ হচ্ছে নতুন ব্যপার স্যপারের জন্য ##########
-            if self.batch_index == 0:      ############### 
+            if self.batch_index == 0:      ###############
                 index_array = np.arange(n)
                 if shuffle:
                     index_array = np.random.permutation(n)
 
-            current_index = (self.batch_index * batch_size) % n
-            if n >= current_index + batch_size:
+            current_index = (self.batch_index * batch_size) % n ####### উপর থেকে কত নিচে আছে সেটার হিসাব। যদি একবার পুরোটা ঘুরে আবার উপরে উঠে যায়, সেটাও হিসাবে ধরা হচ্ছে। কেন এমন টা হবে দেখতে হবে #############
+            if n >= current_index + batch_size: ###### এটা সমান তখন ই হবে যখন একেবারে শেষ হয়ে গেছে। যে আরেকটু আগালেই ডেড এন্ড #######
                 current_batch_size = batch_size
                 self.batch_index += 1
             else:
-                current_batch_size = n - current_index
-                self.batch_index = 0
-            self.total_batches_seen += 1
+                current_batch_size = n - current_index ######## একেবারে তলায় চলে আসার পরে, যেটুক বাকি আছে, সেটুক নিয়েই ব্যাচ ####################
+                self.batch_index = 0 ############# যেহেতু ব্যাচ ফুরিয়ে গেছে, তাই ব্যাচ ইন্ডেক্স গোড়ায় নিয়ে গিয়ে শেষ করা, পরের বারের জন্য। ######################
+            self.total_batches_seen += 1  ######## কতগুলা ব্যাচ ইল্ড করে করে বের হল সেইটার কাউন্টার ##########################
             yield (index_array[current_index: current_index + current_batch_size],
-                   current_index, current_batch_size)
+                   current_index, current_batch_size)        ####  একেবারে শেষ বিন্দু পর্যন্ত ডেটা টে ইউজ করার জন্য কারেন্ট ব্যাচ সাইজ ও পাঠানো হচ্ছে, কারেন্ট ইন্ডেক্স এর সাথে।
+                                                            ##### আর কাটা হচ্ছে, কারেন্ট পজিশন থেকে শুরু করে কারেন্ট ব্যাচ সাইজ পরিমান ##########
+
 ###################  YIELD এর থেকে প্রতিবার নেক্সট নেক্সট করে একটা করে করে বের হবে ###################
 
 

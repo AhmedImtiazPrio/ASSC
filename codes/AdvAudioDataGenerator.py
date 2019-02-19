@@ -8,6 +8,8 @@ import warnings
 from scipy.ndimage.interpolation import shift
 import threading
 # from six.moves import range
+import random
+import tensorflow as tf
 
 class Iterator(object):
     """Abstract base class for image data iterators.
@@ -18,7 +20,8 @@ class Iterator(object):
         seed: Random seeding for data shuffling.
     """
 
-    def __init__(self, n, batch_size, shuffle, seed):
+    def __init__(self, n, y, target_y, batch_size, shuffle, seed): # add target y to init(s)
+        self.y = y
         self.n = n
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -26,40 +29,72 @@ class Iterator(object):
         self.total_batches_seen = 0
         self.lock = threading.Lock()
         self.index_generator = self._flow_index(n, batch_size, shuffle, seed)
+        self.current_pos = [0] * (np.unique(self.y[target_y])) ## target Y er number of uniques
+        self.exhaustion = [False] * (np.unique(self.y[target_y]))  ###### সাত জনের ই এক্সহসন ফলস শুরুতে। এক এক জনের এক্সহসন হলে সেইটা করে ট্রু হতে থাকবে। সবগুলা ট্রু হলে ইল্ড ব্রেক, রিসেট শাফল।
 
-    def reset(self):
+    def reset(self, target_y):
         self.batch_index = 0
+        self.exhaustion = [False] * (np.unique(self.y[target_y]))
+        self.current_pos = [0] * (np.unique(self.y[target_y]))
 
-    def _flow_index(self, n, batch_size=32, shuffle=False, seed=None):
+
+        #এখানে আরো কিছু ইন্ডেক্স জিরো হবে এবং ইত্যাদি ###
+
+############################################################################################################################
+    ######################################################################################################################
+
+
+    def _flow_index(self, n, y, target_y, batch_size=32, shuffle=False, seed=None): ######## শুধু স্যাম্পল সংখ্যা যথেস্ট না এখানে। ওয়াই সবগুলাও দিতে হবে। সাথে কোন ওয়াই এর উপরে বেইজ করে ব্যাচ বানাবো সেইটাও।
         # Ensure self.batch_index is 0.
         self.reset()
         while 1:
             if seed is not None:
-                np.random.seed(seed + self.total_batches_seen)
-            if self.batch_index == 0:
-                index_array = np.arange(n)
-                if shuffle:
-                    index_array = np.random.permutation(n)
+                np.random.seed(seed + self.total_batches_seen)  ####### SEEEEEED চেঞ্জ হচ্ছে নতুন ব্যপার স্যপারের জন্য ##########
 
-            current_index = (self.batch_index * batch_size) % n
-            if n >= current_index + batch_size:
-                current_batch_size = batch_size
-                self.batch_index += 1
-            else:
-                current_batch_size = n - current_index
-                self.batch_index = 0
+            # সাব ক্লাস গুলা আলাদা করা
+            if self.batch_index == 0:            ######## যদি ব্যাচ কাটাকাটির একেবারে শুরু তে থাকে এইটা,
+                index_array = []
+                n_cls = np.unique(y[target_y])
+                sub_class = []
+                ## handle if categorical in np.where
+                for cls in n_cls:
+                    sub_class.append(np.where(np.argmax(y[target_y],axis=-1) == cls))
+            # কাউন্টিং নাম্বার অফ মেম্বারস ইন থে ইন্ডেক্স শিট
+            # হয়ত আরো ভাল করে করা যায়, আপাতত থাক এটা
+            number_of_member_in_sub_class = []
+            for each in sub_class:
+                number_of_member_in_sub_class.append(len(each))
+            chunk_size = int(batch_size/ len(np.unique(self.y[target_y])))
+            warnings.warn('the batch size implemented here is')
+            print(chunk_size*(len(np.unique(self.y[target_y]))))
+
+            for i in range(len(np.unique(self.y[target_y]))):
+                if(number_of_member_in_sub_class[i] - self.current[i] >= chunk_size):
+                    index_array[i] = sub_class[i][self.current[i]:self.current[i]+chunk_size]
+                    self.current[i] = self.current[i] + chunk_size
+                else:
+                    self.exhaustion[i] = True
+                    self.current[i]=0
+                    random.shuffle(y[i])
+            self.batch_index += 1
             self.total_batches_seen += 1
-            yield (index_array[current_index: current_index + current_batch_size],
-                   current_index, current_batch_size)
+            if all(self.exhaustion):
+                self.batch_index = 0
 
-    def __iter__(self):
+            yield(index_array)
+
+    ############################################################################################################################
+    ######################################################################################################################
+
+
+
+    def __iter__(self): ########### ইতর ফাংশন  ##########
         # Needed if we want to do something like:
-        # for x, y in data_gen.flow(...):
+        # for x, y in data_gen.flow(...): ###### And why would we want to do that? -_- #################
         return self
 
     def __next__(self, *args, **kwargs):
-        return self.next(*args, **kwargs)
-
+        return self.next(*args, **kwargs) ############# যদি নতুন নেক্সট লাগে্‌, তাছাড়া, পাইথন ২ এর সাথে কম্প্যাটিবিলিটি  #############
 
 
 class NumpyArrayIterator(Iterator):
@@ -67,6 +102,13 @@ class NumpyArrayIterator(Iterator):
     # Arguments
         x: Numpy array of input data.
         y: Numpy array of targets data.
+
+
+        ### এখানে আরো বেশি জিনিসপাতি এসে ঢুকবে। ########
+
+
+
+
         audio_data_generator: Instance of `AudioDataGenerator`
             to use for random transformations and normalization.
         batch_size: Integer, size of a batch.
@@ -85,38 +127,64 @@ class NumpyArrayIterator(Iterator):
             validation_split is set in AudioDataGenerator.
     """
 
-    def __init__(self, x, y, audio_data_generator,
+    def __init__(self, x, y, flag, audio_data_generator,
                  batch_size=32, shuffle=False, seed=None,
                  data_format=None,
                  save_to_dir=None, save_prefix='', save_format='png',
                  subset=None):
-        if y is not None and len(x) != len(y):
-            raise ValueError('`x` (audio tensor) and `y` (labels) '
-                             'should have the same length. '
-                             'Found: x.shape = %s, y.shape = %s' %
-                             (np.asarray(x).shape, np.asarray(y).shape))
-        if subset is not None:
+
+
+
+
+        ##########################################################################################################################
+        ##########################################################################################################################
+        ##########################################################################################################################
+        ##########################################################################################################################
+
+
+        #self.y = y
+        self.flag = flag
+        number_of_branches = np.shape(y)[0]
+        sizes_of_branches = []
+        for each in y:
+            sizes_of_branches.append(np.shape(each)) ## handle categorical/non-categorical labels in list of y
+        count = np.unique(sizes_of_branches)
+        if count.size !=1 and len(x) != count[0]:
+            raise ValueError(
+                '`x` (audio tensor) and `y` (labels) '  ###### চিল্লাপাল্লা কর যে ডেটার সংখ্যা আর লেবেলের সংখ্যা মেলে না #########
+                'should have the same length. '
+                'Found: x.shape = %s, y.shape = %s' %
+                (np.asarray(x).shape, np.asarray(y).shape))
+
+
+        if subset is not None: ######### সাবসেটের নাম হবে হয় ট্রেইনিং না হয় ভ্যালিডেশন। অন্য রহিম করিম দিলে চিল্লাপাল্লা হবে এখানে ########
             if subset not in {'training', 'validation'}:
                 raise ValueError('Invalid subset name:', subset,
-                                 '; expected "training" or "validation".')
-            split_idx = int(len(x) * audio_data_generator._validation_split)
-            if subset == 'validation':
+                                 '; expected "training" or "validation".')  ### চিল্লাপাল্লা শেষ
+            split_idx = int(len(x) * audio_data_generator._validation_split)  ##### ভ্যালিডেশন স্প্লিট যদি একটা দশমিক হয়, তবে সেটা অনুসারে মোট কয়টা স্প্লিট থাকবে ################
+            if subset == 'validation':  ####### যদি ভ্যালিডেশন সাবসেট হয় তাহলে
                 x = x[:split_idx]
                 if y is not None:
-                    y = y[:split_idx]
+                    for i in range(np.shape(y)[0]):
+                        y[i] = y[i][:split_idx]
             else:
-                x = x[split_idx:]
+                x= x[split_idx:]
                 if y is not None:
-                    y = y[split_idx:]
+                    for i in range(np.shape(y)[0]):
+                        y[i] = y[i][:split_idx]
+
         if data_format is None:
-            data_format = 'channels_last'
-        self.x = np.asarray(x, dtype=K.floatx())
-        if self.x.ndim != 3:
+            data_format = 'channels_last' ########## কিছু না বললে চ্যানেল লাস্টে আছে।
+        self.x = np.asarray(x, dtype=K.floatx()) ####### ডেটা কে ফ্লোট ওয়ালা নাম্পাই এরে তে টাইপকাস্ট করা হল। #######
+
+        self.y = y
+
+        if self.x.ndim != 3:          ###### কাহিনী
             raise ValueError('Input data in `NumpyArrayIterator` '
                              'should have rank 3. You passed an array '
-                             'with shape', self.x.shape)
+                             'with shape', self.x.shape) #### চিল্লাপাল্লা
         channels_axis = 2 if data_format == 'channels_last' else 1
-        if self.x.shape[channels_axis] not in {1, 3, 4}:
+        if self.x.shape[channels_axis] not in {1, 2, 3, 4}: ###########  বুঝি নাই ###############
             warnings.warn('NumpyArrayIterator is set to use the '
                           'data format convention "' + data_format + '" '
                                                                      '(channels on axis ' + str(
@@ -125,31 +193,61 @@ class NumpyArrayIterator(Iterator):
                                                                                              'However, it was passed an array with shape ' + str(
                 self.x.shape) +
                           ' (' + str(self.x.shape[channels_axis]) + ' channels).')
-        if y is not None:
-            self.y = np.asarray(y)
+
+        if self.y is not None:
+            for i in range(np.shape(self.y)[0]):
+                self.y[i] = np.asarray(self.y[i])
+            #self.y = np.asarray(y)
         else:
             self.y = None
+
+
         self.audio_data_generator = audio_data_generator
         self.data_format = data_format
         self.save_to_dir = save_to_dir
         self.save_prefix = save_prefix
         self.save_format = save_format
-        super(NumpyArrayIterator, self).__init__(x.shape[0], batch_size, shuffle, seed)
+        super(NumpyArrayIterator, self).__init__(x.shape[0], batch_size, shuffle, seed) ##### সুপার কে ডেকে ইনিশিয়ালাইজ করা হল ######
+
+    #          ####নিচের লাইনের এক্সপ্লানেশন ####
+    #        >> > a = np.zeros(tuple([3] + [4]))
+    #        >> > a
+    #        array([[0., 0., 0., 0.],
+    #               [0., 0., 0., 0.],
+    #               [0., 0., 0., 0.]])
 
     def _get_batches_of_transformed_samples(self, index_array):
         batch_x = np.zeros(tuple([len(index_array)] + list(self.x.shape)[1:]),
-                           dtype=K.floatx())
-        for i, j in enumerate(index_array):
+                           dtype=K.floatx())  # একটা এক্স ক্রস ওয়াই জিরো ম্যাট্রিক্স এন্ডিএরে বানাতে এত ক্যাচাল! :/
+        for i, j in enumerate(index_array): ####### i হচ্ছে ০ থেকে শুরু করা কাউন্টার । j হচ্ছে
             x = self.x[j]
-            x = self.audio_data_generator.random_transform(x.astype(K.floatx()))
-            x = self.audio_data_generator.standardize(x)
-            batch_x[i] = x
-        if self.save_to_dir:
-            raise NotImplementedError
+            x = self.audio_data_generator.random_transform(x.astype(K.floatx())) ######### নিচের অডিওডেটা জেনারেটর কে ডেকে এনে র‍্যান্ডম ট্রান্সফরম করলাম
+            x = self.audio_data_generator.standardize(x)       ############ স্ট্যান্ডারডাইজ ও করলাম। ###########
+            batch_x[i] = x                 ############## আই তম ব্যাচ হচ্ছে এভাবে প্রথম ক্যাচাল করা ব্যাচ। এভাবে ইন্ডেক্স এরে এর সাইজ সমপরিমান ব্যাচ #####
+        if self.save_to_dir: ###### ডিরেক্টরি তে এখনো সেভ করা হচ্ছে না। চাইলে করাই যায়। পরে দেখি ##############
+            raise NotImplementedError #### এনক্রিপ্টেড এরর #########
 
-        if self.y is None:
-            return batch_x
-        batch_y = self.y[index_array]
+        if self.y is None: ######### যদি কিছু না থাকে লেবেলে,
+            return batch_x ############ তাহলে
+
+        batch_y = []
+
+        for i in range(np.shape(self.y)[0]):
+            batch_y = batch_y.append(self.y[i][index_array])
+
+            if self.flag[i]==1:
+                batch_y[i] = tf.keras.utils.to_categorical(batch_y[i])
+                ### এই ভদ্রলোক ক্যাটাগোরিকাল ছিলেন।
+            if self.flag[i]==2:
+                print()
+                #print("Leave this one")
+            if self.flag[i]==3:
+                batch_y[i][:, 0] = batch_y[i]
+                ## এর কাছে শুরুতে ছিল শুধু কমা।
+            ####### সবাইকে আগের জায়গায় ফিরিয়ে দেওয়া হল। #########
+
+
+        #batch_y = self.y[index_array]
         return batch_x, batch_y
 
     def next(self):
@@ -207,7 +305,8 @@ class AudioDataGenerator(object):
         validation_split: Float. Fraction of images reserved for validation (strictly between 0 and 1).
 
     """
-
+    ### add target y labels to use for balancing
+    ## consider issues if y is not list
     def __init__(self,
                  featurewise_center=False,
                  samplewise_center=False,
@@ -337,8 +436,24 @@ class AudioDataGenerator(object):
                           '`noise`, which overrides the setting of'
                           '`shuffle` as True'
                           )
+
+        flag = []
+        for i in range(3):
+            try:
+                if (y[i].shape[1] > 1):
+                    flag.append(1)
+                    y[i] = np.argmax(y[i], axis=-1)
+
+                else:
+                    flag.append(2)
+                    y[i] = np.argmax(y[i], axis=-1)
+
+            except:
+                flag.append(3)
+        #everything is of shape (n,)
+
         return NumpyArrayIterator(
-            x, y, self,
+            x, y, flag, self,
             batch_size=batch_size,
             shuffle=shuffle,
             seed=seed,
