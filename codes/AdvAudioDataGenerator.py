@@ -34,6 +34,10 @@ class _Iterator(object):
         self.labels = np.unique(self.y[self.target_label])  # unique labels in y[target_label]
         self.chunk_size = int(batch_size / len(self.labels))
         print('Chunk size selected as %d' % self.chunk_size)
+        if not all(np.bincount(self.y[self.target_label])>=self.chunk_size):
+            warnings.warn('Number of samples for label %s is smaller than chunk size %d' %
+                          (str(self.labels[np.bincount(self.y[self.target_label])
+                                           <self.chunk_size]),self.chunk_size))
 
     def reset(self):
         self.batch_index = 0
@@ -126,13 +130,6 @@ class _NumpyArrayIterator(_Iterator):
                  save_to_dir=None, save_prefix='', save_format='png',
                  subset=None):
 
-        self.flag = flag
-        sizes_of_branches = [len(each) for each in y] ## handle categorical/non-categorical labels in list of y
-        # print(sizes_of_branches)
-        sizes_of_branches += [len(x)]
-        if len(np.unique(sizes_of_branches))>1:
-            raise ValueError('Non coherent input shapes')
-
         if subset is not None: ######### সাবসেটের নাম হবে হয় ট্রেইনিং না হয় ভ্যালিডেশন। অন্য রহিম করিম দিলে চিল্লাপাল্লা হবে এখানে ########
             if subset not in {'training', 'validation'}:
                 raise ValueError('Invalid subset name:', subset,
@@ -152,7 +149,6 @@ class _NumpyArrayIterator(_Iterator):
         if data_format is None:
             data_format = 'channels_last' ########## কিছু না বললে চ্যানেল লাস্টে আছে।
         self.x = np.asarray(x, dtype=K.floatx()) ####### ডেটা কে ফ্লোট ওয়ালা নাম্পাই এরে তে টাইপকাস্ট করা হল। #######
-        self.y = y
 
         if self.x.ndim != 3:          ###### কাহিনী
             raise ValueError('Input data in `NumpyArrayIterator` '
@@ -166,38 +162,35 @@ class _NumpyArrayIterator(_Iterator):
                           'either 1, 3 or 4 channels on axis ' + str(channels_axis) + '. '
                           'However, it was passed an array with shape ' + str(self.x.shape) +' (' + str(self.x.shape[channels_axis]) + ' channels).')
 
-        if self.y is not None:
-            for i in range(np.shape(self.y)[0]):
-                self.y[i] = np.asarray(self.y[i])
-            #self.y = np.asarray(y)
+        self.flag = flag
+        if y is not None:
+            self.y = [np.asarray(each) for each in y]
+            sizes_of_branches = [len(each) for each in y]  ## handle categorical/non-categorical labels in list of y
+            sizes_of_branches += [len(x)]
+            if len(np.unique(sizes_of_branches)) > 1:
+                raise ValueError('Non coherent input shapes')
         else:
-            self.y = None
-
+            self.y=y
 
         self.audio_data_generator = audio_data_generator
         self.data_format = data_format
         self.save_to_dir = save_to_dir
         self.save_prefix = save_prefix
         self.save_format = save_format
-        super(_NumpyArrayIterator, self).__init__(x.shape[0], target_label, batch_size, shuffle, seed) ##### সুপার কে ডেকে ইনিশিয়ালাইজ করা হল ######
+        super(_NumpyArrayIterator, self).__init__(x.shape[0], target_label, batch_size, shuffle, seed)
 
-    #          ####নিচের লাইনের এক্সপ্লানেশন ####
-    #        >> > a = np.zeros(tuple([3] + [4]))
-    #        >> > a
-    #        array([[0., 0., 0., 0.],
-    #               [0., 0., 0., 0.],
-    #               [0., 0., 0., 0.]])
 
     def _get_batches_of_transformed_samples(self, index_array):
         batch_x = np.zeros(tuple([len(index_array)] + list(self.x.shape)[1:]),
-                           dtype=K.floatx())  # একটা এক্স ক্রস ওয়াই জিরো ম্যাট্রিক্স এন্ডিএরে বানাতে এত ক্যাচাল! :/
-        for i, j in enumerate(index_array): ####### i হচ্ছে ০ থেকে শুরু করা কাউন্টার । j হচ্ছে
+                           dtype=K.floatx())
+        for i, j in enumerate(index_array):
             x = self.x[j]
-            x = self.audio_data_generator.random_transform(x.astype(K.floatx())) ######### নিচের অডিওডেটা জেনারেটর কে ডেকে এনে র‍্যান্ডম ট্রান্সফরম করলাম
-            x = self.audio_data_generator.standardize(x)       ############ স্ট্যান্ডারডাইজ ও করলাম। ###########
-            batch_x[i] = x                 ############## আই তম ব্যাচ হচ্ছে এভাবে প্রথম ক্যাচাল করা ব্যাচ। এভাবে ইন্ডেক্স এরে এর সাইজ সমপরিমান ব্যাচ #####
-        if self.save_to_dir: ###### ডিরেক্টরি তে এখনো সেভ করা হচ্ছে না। চাইলে করাই যায়। পরে দেখি ##############
-            raise NotImplementedError #### এনক্রিপ্টেড এরর #########
+            x = self.audio_data_generator.random_transform(x.astype(K.floatx()))
+            x = self.audio_data_generator.standardize(x)
+            batch_x[i] = x
+
+        if self.save_to_dir:
+            raise NotImplementedError
 
         if self.y is None:
             return batch_x
@@ -210,14 +203,7 @@ class _NumpyArrayIterator(_Iterator):
             print()
         if self.flag==3:
             print()
- #               batch_y[i] = batch_y[i]
-#                batch_y[i] = batch_y[i][:, 0]
-                ## এর কাছে শুরুতে ছিল শুধু কমা।
-            ####### সবাইকে আগের জায়গায় ফিরিয়ে দেওয়া হল। #########
-        #print(batch_x)
-        #print(batch_y)
 
-        #batch_y = self.y[index_array]
         if len(batch_y)==1:
             batch_y=batch_y[0]
         return batch_x, batch_y
@@ -408,23 +394,22 @@ class BalancedAudioDataGenerator(object):
                           '`noise`, which overrides the setting of'
                           '`shuffle` as True'
                           )
+        if y is None:
+            raise ValueError('`y` must be specified for balanced data generation')
         ## handle if y is not a list
-        if not type(y) == 'list':
+        if not type(y) == list and y is not None:
             y = [y]
-
+        ## handle y type
         try:
             if (y[target_label].shape[1] > 1):
                 flag = 1
                 y[target_label] = np.argmax(y[target_label], axis=-1)
-
             else:
                 flag = 2
                 y[target_label] = np.argmax(y[target_label], axis=-1)
-
         except:
             flag = 3
 
-        # print(flag)
     # everything is of shape (n,)
         return _NumpyArrayIterator(
             x=x, y=y, target_label=target_label, flag=flag, audio_data_generator=self,
