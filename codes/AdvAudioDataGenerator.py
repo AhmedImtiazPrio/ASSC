@@ -9,7 +9,7 @@ from scipy.ndimage.interpolation import shift
 import threading
 # from six.moves import range
 import random
-import tensorflow as tf
+from keras.utils import to_categorical
 
 class _Iterator(object):
     """Abstract base class for image data iterators.
@@ -198,7 +198,7 @@ class _NumpyArrayIterator(_Iterator):
         batch_y = [each[index_array] for each in self.y]
 
         if self.flag==1:
-            batch_y[self.target_label] = tf.keras.utils.to_categorical(batch_y[self.target_label])
+            batch_y[self.target_label] = to_categorical(batch_y[self.target_label])
         if self.flag==2:
             print()
         if self.flag==3:
