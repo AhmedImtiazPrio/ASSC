@@ -11,7 +11,7 @@ import threading
 import random
 import tensorflow as tf
 
-class Iterator(object):
+class _Iterator(object):
     """Abstract base class for image data iterators.
     # Arguments
         n: Integer, total number of samples in the dataset to loop over.
@@ -20,22 +20,25 @@ class Iterator(object):
         seed: Random seeding for data shuffling.
     """
 
-    def __init__(self, n, target_y, batch_size, shuffle, seed): # add target y to init(s)
+    def __init__(self, n, target_label, batch_size, shuffle, seed): # add target y to init(s)
 
-        self.target_y=target_y
+        self.target_label=target_label
         self.n = n
         self.shuffle = shuffle
         self.batch_index = 0
         self.total_batches_seen = 0
         self.lock = threading.Lock()
         self.index_generator = self._flow_index(batch_size, shuffle=shuffle, seed=seed)
-        self.current_idx = [0] * len(np.unique(self.y[self.target_y])) ## target Y er number of uniques
-        self.exhaustion = [False] * len(np.unique(self.y[self.target_y]))  ###### সাত জনের ই এক্সহসন ফলস শুরুতে। এক এক জনের এক্সহসন হলে সেইটা করে ট্রু হতে থাকবে। সবগুলা ট্রু হলে ইল্ড ব্রেক, রিসেট শাফল।
+        self.current_idx = [0] * len(np.unique(self.y[self.target_label])) ## target Y er number of uniques
+        self.exhaustion = [False] * len(np.unique(self.y[self.target_label]))  ###### সাত জনের ই এক্সহসন ফলস শুরুতে। এক এক জনের এক্সহসন হলে সেইটা করে ট্রু হতে থাকবে। সবগুলা ট্রু হলে ইল্ড ব্রেক, রিসেট শাফল।
+        self.labels = np.unique(self.y[self.target_label])  # unique labels in y[target_label]
+        self.chunk_size = int(batch_size / len(self.labels))
+        print('Chunk size selected as %d' % self.chunk_size)
 
     def reset(self):
         self.batch_index = 0
-        self.exhaustion = [False] * len(np.unique(self.y[self.target_y]))
-        self.current_idx = [0] * len(np.unique(self.y[self.target_y]))
+        self.exhaustion = [False] * len(np.unique(self.y[self.target_label]))
+        self.current_idx = [0] * len(np.unique(self.y[self.target_label]))
 
 
     def _flow_index(self, batch_size=32, shuffle=False, seed=None): ######## শুধু স্যাম্পল সংখ্যা যথেস্ট না এখানে। ওয়াই সবগুলাও দিতে হবে। সাথে কোন ওয়াই এর উপরে বেইজ করে ব্যাচ বানাবো সেইটাও।
@@ -46,29 +49,27 @@ class Iterator(object):
                 np.random.seed(seed + self.total_batches_seen)
 
             if self.batch_index == 0:
-                bins = np.unique(self.y[self.target_y]) # unique bins in y[target_y]
-                bin_idx = []
-                for idx,each in enumerate(bins):
-                    bin_idx.append(np.hstack(np.where(self.y[self.target_y] == each)))
+                label_idx = []
+                for idx,each in enumerate(self.labels):
+                    label_idx.append(np.hstack(np.where(self.y[self.target_label] == each)))
                     if shuffle:
-                        bin_idx[idx] = np.random.permutation(bin_idx[idx]) # permute for first batch
-                bin_count = [len(each) for each in bin_idx]
-                # print(bin_count)
-                chunk_size = int(batch_size/ len(bins))
-                print('Chunk_size selected as %d' % chunk_size)
+                        label_idx[idx] = np.random.permutation(label_idx[idx]) # permute for first batch
+                label_count = [len(each) for each in label_idx]
+                # print(label_count)
+
             index_array = []
-            for idx,num in enumerate(bin_count):
+            for idx,num in enumerate(label_count):
                 # print(self.current_idx)
-                if (num - self.current_idx[idx]) >= chunk_size: ## if there is space in the current bin
-                    index_array = index_array + list(bin_idx[idx][self.current_idx[idx]:self.current_idx[idx]+chunk_size])
-                    self.current_idx[idx] += chunk_size
+                if (num - self.current_idx[idx]) >= self.chunk_size: ## if there is space in the current label
+                    index_array = index_array + list(label_idx[idx][self.current_idx[idx]:self.current_idx[idx]+self.chunk_size])
+                    self.current_idx[idx] += self.chunk_size
                 ## include remaining samples
                 else:
                     self.exhaustion[idx] = True
                     self.current_idx[idx] = 0
-                    bin_idx[idx] = np.random.permutation(bin_idx[idx])
-                    index_array = index_array + list(bin_idx[idx][self.current_idx[idx]:self.current_idx[idx]+chunk_size])
-                    self.current_idx[idx] += chunk_size
+                    label_idx[idx] = np.random.permutation(label_idx[idx])
+                    index_array = index_array + list(label_idx[idx][self.current_idx[idx]:self.current_idx[idx]+self.chunk_size])
+                    self.current_idx[idx] += self.chunk_size
 
             self.total_batches_seen += 1
             if all(self.exhaustion):
@@ -80,30 +81,6 @@ class Iterator(object):
             print("Current Index %s" % str(self.current_idx))
             yield index_array
 
-
-            #
-            #
-            # for i in range(len(self.y)):
-            #     if(class_count[i] - self.current[i] >= chunk_size):
-            #         index_array[i] = bin_idx[i][self.current[i]:self.current[i]+chunk_size]
-            #         self.current[i] = self.current[i] + chunk_size
-            #     else:
-            #         self.exhaustion[i] = True
-            #         self.current[i]=0
-            #         random.shuffle(self.y[i])
-            # self.batch_index += 1
-            # self.total_batches_seen += 1
-            # if all(self.exhaustion):
-            #     self.batch_index = 0
-            # #print(self.flag)
-            # print(index_array)
-            # yield(index_array)
-
-    ############################################################################################################################
-    ######################################################################################################################
-
-
-
     def __iter__(self): ########### ইতর ফাংশন  ##########
         # Needed if we want to do something like:
         # for x, y in data_gen.flow(...): ###### And why would we want to do that? -_- #################
@@ -113,7 +90,7 @@ class Iterator(object):
         return self.next(*args, **kwargs) ############# যদি নতুন নেক্সট লাগে্‌, তাছাড়া, পাইথন ২ এর সাথে কম্প্যাটিবিলিটি  #############
 
 
-class NumpyArrayIterator(Iterator):
+class _NumpyArrayIterator(_Iterator):
     """Iterator yielding data from a Numpy array.
     # Arguments
         x: Numpy array of input data.
@@ -143,7 +120,7 @@ class NumpyArrayIterator(Iterator):
             validation_split is set in AudioDataGenerator.
     """
 
-    def __init__(self, x, y, target_y, flag, audio_data_generator,
+    def __init__(self, x, y, target_label, flag, audio_data_generator,
                  batch_size=32, shuffle=False, seed=None,
                  data_format=None,
                  save_to_dir=None, save_prefix='', save_format='png',
@@ -202,7 +179,7 @@ class NumpyArrayIterator(Iterator):
         self.save_to_dir = save_to_dir
         self.save_prefix = save_prefix
         self.save_format = save_format
-        super(NumpyArrayIterator, self).__init__(x.shape[0], target_y, batch_size, shuffle, seed) ##### সুপার কে ডেকে ইনিশিয়ালাইজ করা হল ######
+        super(_NumpyArrayIterator, self).__init__(x.shape[0], target_label, batch_size, shuffle, seed) ##### সুপার কে ডেকে ইনিশিয়ালাইজ করা হল ######
 
     #          ####নিচের লাইনের এক্সপ্লানেশন ####
     #        >> > a = np.zeros(tuple([3] + [4]))
@@ -228,7 +205,7 @@ class NumpyArrayIterator(Iterator):
         batch_y = [each[index_array] for each in self.y]
 
         if self.flag==1:
-            batch_y[self.target_y] = tf.keras.utils.to_categorical(batch_y[self.target_y])
+            batch_y[self.target_label] = tf.keras.utils.to_categorical(batch_y[self.target_label])
         if self.flag==2:
             print()
         if self.flag==3:
@@ -259,7 +236,7 @@ class NumpyArrayIterator(Iterator):
         return self._get_batches_of_transformed_samples(index_array)
 
 
-class AudioDataGenerator(object):
+class BalancedAudioDataGenerator(object):
     """Generate batches of tensor audio data with real-time data augmentation.
      The data will be looped over (in batches).
     # Arguments
@@ -402,7 +379,7 @@ class AudioDataGenerator(object):
             if noise[-1] not in {'Uniform', 'Normal'}:
                 raise ValueError('Distribution not recognised', noise[-1])
 
-    def flow(self, x, y=None, target_y=0, batch_size=32, shuffle=True, seed=None,
+    def flow(self, x, y=None, target_label=0, batch_size=32, shuffle=True, seed=None,
              save_to_dir=None, save_prefix='', save_format='png', subset=None):
         """Takes numpy data & label arrays, and generates batches of
             augmented/normalized data.
@@ -436,21 +413,21 @@ class AudioDataGenerator(object):
             y = [y]
 
         try:
-            if (y[target_y].shape[1] > 1):
+            if (y[target_label].shape[1] > 1):
                 flag = 1
-                y[target_y] = np.argmax(y[target_y], axis=-1)
+                y[target_label] = np.argmax(y[target_label], axis=-1)
 
             else:
                 flag = 2
-                y[target_y] = np.argmax(y[target_y], axis=-1)
+                y[target_label] = np.argmax(y[target_label], axis=-1)
 
         except:
             flag = 3
 
         # print(flag)
     # everything is of shape (n,)
-        return NumpyArrayIterator(
-            x=x, y=y, target_y=target_y, flag=flag, audio_data_generator=self,
+        return _NumpyArrayIterator(
+            x=x, y=y, target_label=target_label, flag=flag, audio_data_generator=self,
             batch_size=batch_size,
             shuffle=shuffle,
             seed=seed,
