@@ -532,8 +532,8 @@ class _Iterator(object):
         self.total_batches_seen = 0
         self.lock = threading.Lock()
         self.index_generator = self._flow_index(batch_size, shuffle=shuffle, seed=seed)
-        self.current_idx = [0] * len(np.unique(self.y[self.target_label])) ## target Y er number of uniques
-        self.exhaustion = [False] * len(np.unique(self.y[self.target_label]))  ###### সাত জনের ই এক্সহসন ফলস শুরুতে। এক এক জনের এক্সহসন হলে সেইটা করে ট্রু হতে থাকবে। সবগুলা ট্রু হলে ইল্ড ব্রেক, রিসেট শাফল।
+        self.current_idx = [0] * len(np.unique(self.y[self.target_label]))
+        self.exhaustion = [False] * len(np.unique(self.y[self.target_label]))
         self.labels = np.unique(self.y[self.target_label])  # unique labels in y[target_label]
         self.chunk_size = int(batch_size / len(self.labels))
         print('Chunk size selected as %d' % self.chunk_size)
@@ -548,7 +548,7 @@ class _Iterator(object):
         self.current_idx = [0] * len(np.unique(self.y[self.target_label]))
 
 
-    def _flow_index(self, batch_size=32, shuffle=False, seed=None): ######## শুধু স্যাম্পল সংখ্যা যথেস্ট না এখানে। ওয়াই সবগুলাও দিতে হবে। সাথে কোন ওয়াই এর উপরে বেইজ করে ব্যাচ বানাবো সেইটাও।
+    def _flow_index(self, batch_size=32, shuffle=False, seed=None):
         # Ensure self.batch_index is 0.
         self.reset()
         while 1:
@@ -562,11 +562,11 @@ class _Iterator(object):
                     if shuffle:
                         label_idx[idx] = np.random.permutation(label_idx[idx]) # permute for first batch
                 label_count = [len(each) for each in label_idx]
-                # print(label_count)
+                # #print(label_count)
 
             index_array = []
             for idx,num in enumerate(label_count):
-                # print(self.current_idx)
+                # #print(self.current_idx)
                 if (num - self.current_idx[idx]) >= self.chunk_size: ## if there is space in the current label
                     index_array = index_array + list(label_idx[idx][self.current_idx[idx]:self.current_idx[idx]+self.chunk_size])
                     self.current_idx[idx] += self.chunk_size
@@ -583,18 +583,18 @@ class _Iterator(object):
                 self.reset()
             else:
                 self.batch_index += 1
-            print("Total batches seen %d" % self.total_batches_seen)
-            print("Batch Index %d" % self.batch_index)
-            print("Current Index %s" % str(self.current_idx))
+            #print("Total batches seen %d" % self.total_batches_seen)
+            #print("Batch Index %d" % self.batch_index)
+            #print("Current Index %s" % str(self.current_idx))
             yield index_array
 
-    def __iter__(self): ########### ইতর ফাংশন  ##########
+    def __iter__(self):
         # Needed if we want to do something like:
-        # for x, y in data_gen.flow(...): ###### And why would we want to do that? -_- #################
+        # for x, y in data_gen.flow(...):
         return self
 
     def __next__(self, *args, **kwargs):
-        return self.next(*args, **kwargs) ############# যদি নতুন নেক্সট লাগে্‌, তাছাড়া, পাইথন ২ এর সাথে কম্প্যাটিবিলিটি  #############
+        return self.next(*args, **kwargs)
 
 
 class _NumpyArrayIterator(_Iterator):
@@ -602,12 +602,6 @@ class _NumpyArrayIterator(_Iterator):
     # Arguments
         x: Numpy array of input data.
         y: Numpy array of targets data.
-
-
-        ### এখানে আরো বেশি জিনিসপাতি এসে ঢুকবে। ########
-
-
-
 
         audio_data_generator: Instance of `AudioDataGenerator`
             to use for random transformations and normalization.
@@ -633,12 +627,12 @@ class _NumpyArrayIterator(_Iterator):
                  save_to_dir=None, save_prefix='', save_format='png',
                  subset=None):
 
-        if subset is not None: ######### সাবসেটের নাম হবে হয় ট্রেইনিং না হয় ভ্যালিডেশন। অন্য রহিম করিম দিলে চিল্লাপাল্লা হবে এখানে ########
+        if subset is not None:
             if subset not in {'training', 'validation'}:
                 raise ValueError('Invalid subset name:', subset,
-                                 '; expected "training" or "validation".')  ### চিল্লাপাল্লা শেষ
-            split_idx = int(len(x) * audio_data_generator._validation_split)  ##### ভ্যালিডেশন স্প্লিট যদি একটা দশমিক হয়, তবে সেটা অনুসারে মোট কয়টা স্প্লিট থাকবে ################
-            if subset == 'validation':  ####### যদি ভ্যালিডেশন সাবসেট হয় তাহলে
+                                 '; expected "training" or "validation".')
+            split_idx = int(len(x) * audio_data_generator._validation_split)
+            if subset == 'validation':
                 x = x[:split_idx]
                 if y is not None:
                     for i in range(np.shape(y)[0]):
@@ -650,15 +644,15 @@ class _NumpyArrayIterator(_Iterator):
                         y[i] = y[i][:split_idx]
 
         if data_format is None:
-            data_format = 'channels_last' ########## কিছু না বললে চ্যানেল লাস্টে আছে।
-        self.x = np.asarray(x, dtype=K.floatx()) ####### ডেটা কে ফ্লোট ওয়ালা নাম্পাই এরে তে টাইপকাস্ট করা হল। #######
+            data_format = 'channels_last'
+        self.x = np.asarray(x, dtype=K.floatx())
 
-        if self.x.ndim != 3:          ###### কাহিনী
+        if self.x.ndim != 3:
             raise ValueError('Input data in `NumpyArrayIterator` '
                              'should have rank 3. You passed an array '
-                             'with shape', self.x.shape) #### চিল্লাপাল্লা
+                             'with shape', self.x.shape)
         channels_axis = 2 if data_format == 'channels_last' else 1
-        if self.x.shape[channels_axis] not in {1, 2, 3, 4}: ###########  বুঝি নাই ###############
+        if self.x.shape[channels_axis] not in {1, 2, 3, 4}:
             warnings.warn('NumpyArrayIterator is set to use the '
                           'data format convention "' + data_format + '" '
                           '(channels on axis ' + str(channels_axis) + '), i.e. expected '

@@ -12,7 +12,7 @@ from tensorflow import set_random_seed
 # from imblearn.keras import BalancedBatchGenerator
 # from imblearn.under_sampling import NearMiss
 from keras.callbacks import LearningRateScheduler
-
+from keras.losses import categorical_crossentropy
 set_random_seed(1)
 from datetime import datetime
 import argparse
@@ -25,7 +25,8 @@ from keras.optimizers import Adamax as opt
 from keras import optimizers
 from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger
 import pandas as pd
-
+import keras
+from hyperopt import hp, Trials, fmin, tpe
 from modules import *
 from advutils import *
 from AudioDataGenerator import BalancedAudioDataGenerator
@@ -140,49 +141,34 @@ if __name__ == '__main__':
         s2RedSize = 0.
 
 
-    model_dir = os.path.join(os.getcwd(),'..','models').replace('\\', '/')
-    fold_dir = os.path.join(os.getcwd(),'..','data').replace('\\', '/')
-    log_dir = os.path.join(os.getcwd(),'..','logs').replace('\\', '/')
-    log_name = foldname + '_' + str(datetime.now()).replace(':','-')
-    if not os.path.exists(os.path.join(model_dir, log_name).replace('\\', '/')):
-        new_dir = (os.path.join(model_dir, log_name).replace('\\', '/'))
-        print(new_dir)
-        os.makedirs(new_dir)
-    if not os.path.exists(os.path.join(log_dir, log_name).replace('\\', '/')):
-        new_dir = os.path.join(log_dir, log_name).replace('\\', '/')
-        print(new_dir)
-        os.makedirs(new_dir)
-    checkpoint_name = os.path.join(model_dir,log_name,'weights.{epoch:04d}-{val_clf_acc:.4f}.hdf5').replace('\\', '/')
 
-    results_file = os.path.join(os.getcwd(), '..', 'results.csv').replace('\\','/')
 
     params = {
 
-        'num_classes': 5,
-        'batch_size': batch_size,
-        'epochs': epochs,
-        'aafoldname': foldname,
-        'random_seed': random_seed,
-        'load_path': load_path,
-        'shuffle': True,
-        'initial_epoch': initial_epoch,
-        'eeg_length': 3000,
-        'kernel_size': 16,
-        'bias': True,
-        'maxnorm': 400000000000.,
-        'dropout_rate': 0.45, #.5
-        'dropout_rate_dense': 0.,
-        'padding': 'valid',
-        'activation_function': 'relu',
-        'subsam': 2,
-        'trainable': True,
-        'lr': .001, #.0001
-        'lr_decay': 0.0, #1e-5, #1e-5
-        'hp_lambda': hp_lambda
-    }
+            'num_classes': 5,
+            'batch_size': batch_size,
+            'epochs': epochs,
+            'aafoldname': foldname,
+            'random_seed': random_seed,
+            'load_path': load_path,
+            'shuffle': True,
+            'initial_epoch': initial_epoch,
+            'eeg_length': 3000,
+            'kernel_size': 16,
+            'bias': True,
+            'maxnorm': 400000000000.,
+            'dropout_rate': 0.45, #.5
+            'dropout_rate_dense': 0.,
+            'padding': 'valid',
+            'activation_function': 'relu',
+            'subsam': 2,
+            'trainable': True,
+            'lr': .001, #.0001
+            'lr_decay': 0.0, #1e-5, #1e-5
+            'hp_lambda':  hp_lambda
+            }
 
 
-    current_learning_rate= params['lr']
 
 
     df2 = pd.read_csv('E:/SleepWell/ASSC/data/lastpurifiedallDataChannel1.csv', header=None)
@@ -269,6 +255,14 @@ if __name__ == '__main__':
 
 
     #### adverse-surreal
+    # log_name = foldname + '_' + str(datetime.now()).replace(':', '-')
+    # # model_dir = os.path.join(os.getcwd(), '..', 'models').replace('\\', '/')
+    # # fold_dir = os.path.join(os.getcwd(), '..', 'data').replace('\\', '/')
+    # # log_dir = os.path.join(os.getcwd(), '..', 'logs').replace('\\', '/')
+    # #
+    # model_dir = os.path.join(os.getcwd(), '..', 'models').replace('\\', '/')
+    # fold_dir = os.path.join(os.getcwd(), '..', 'data').replace('\\', '/')
+    # # log_dir = os.path.join(os.getcwd(), '..', 'logs').replace('\\', '/')
 
     K.clear_session()
     top_model = eegnet(**params)
@@ -279,7 +273,7 @@ if __name__ == '__main__':
                 name='clf',
                 use_bias=True)(x)
 
-    dann_in = GradientReversal(hp_lambda=params['hp_lambda'])(x) ## hp_lambda controls the effect of inverse gradient
+    dann_in = GradientReversal(hp_lambda=params['hp_lambda'])(x)
     dsc = Dense(1, activation='sigmoid',
                 kernel_initializer=initializers.he_normal(seed=random_seed),
                 name='dsc',
@@ -287,133 +281,139 @@ if __name__ == '__main__':
 
     model = Model(top_model.input, [clf,dsc])
     # model.summary()
-    if load_path:
-        model.load_weights(filepath=load_path, by_name=False)
-    model_json = model.to_json()
-    with open(os.path.join(model_dir, log_name, 'model.json').replace('\\','/'), "w") as json_file:
-        json_file.write(model_json)
+    # if load_path:
+    #     model.load_weights(filepath=load_path, by_name=False)
+    # model_json = model.to_json()
+    # with open(os.path.join(model_dir, log_name, 'model.json').replace('\\','/'), "w") as json_file:
+    #     json_file.write(model_json)
 
-
-    ################### ADAM COMPILATION ##############
-    model.compile(
-                optimizer=opt(lr=params['lr'], epsilon=None, decay=params['lr_decay']),
-                loss={'clf':'categorical_crossentropy','dsc':'binary_crossentropy'},
-                metrics=['accuracy']
-                 # loss_weights=[1,.5], ### Weighting the classifier loss by 1 and discriminator loss by .5
-                  )  # মডেল কম্পাইলেশন। টেক্সটবুক আচরণ, অবশেষে
-    ##################################################
-
-
-    ################# SGD COMPILATION ################
-
-    #sgd = optimizers.SGD(lr=params['lr'], decay=params['lr_decay'], momentum=0.9, nesterov=True)
-    #model.compile(optimizer= sgd, loss= 'categorical_crossentropy', metrics=['accuracy'] )
-    ##################################################
 
 
     print("model compilation: Done")
-    modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
-                                    monitor='val_clf_acc', save_best_only=True, mode='max')
-    print("model Checkpoints: Loaded")
-
-    tensdir = log_dir + "/" + log_name + "/"
-    tensdir = tensdir.replace('/', "\\")
-
-    tensbd = TensorBoard(log_dir=tensdir, batch_size=batch_size,write_grads=True,)
-
-    # tensbd.set_model(model)
-
-    print("Tensorboard initialization: Done")
-
-    patlogDirectory = log_dir+'/' + log_name + '/'
-    trainingCSVdirectory = log_dir+'/'+log_name+'/'+'training.csv'
-    csv_logger = CSVLogger(trainingCSVdirectory)
-    print("csv logger: Activated")
-    if args.classweights:
-        params['class_weight'] = compute_weight(dummytrainY, np.unique(dummytrainY))
-    else:
-        params['class_weight'] = dict(zip(np.r_[0:params['num_classes']], np.ones(params['num_classes'])))
-
-    print("model dot fit: Started")
-
-    def step_decay(global_epoch_counter):
-        lrate= params['lr']
-        # if global_epoch_counter>10:
-        #     lrate=params['lr']/10
-        #     if global_epoch_counter>20:
-        #         lrate=params['lr']/100
-        #         # if global_epoch_counter>30:
-        #         #     lrate=params['lr']/1000
-        return lrate
-    lrate = LearningRateScheduler(step_decay)
-
-    try:
-
-        datagen = BalancedAudioDataGenerator(
-                                      # shift=.1,
-                                      #roll_range=.15,
-                                     # fill_mode='reflect',
-                                     # featurewise_center=True,
-                                     # zoom_range=.1,
-                                     # zca_whitening=True,
-                                     #  samplewise_center=True,
-                                     #  samplewise_std_normalization=True,
-                                             )
-
-        # valgen = AudioDataGenerator(
-        #      # fill_mode='reflect',
-        #      # featurewise_center=True,
-        #      # zoom_range=.2,
-        #      # zca_whitening=True,
-        #       #roll_range=.1, রোল বন্ধ, যাতে সব সময় একই ডাটার উপরে ভ্যালিডেশন হয়।
-        #       samplewise_center=True,
-        #       samplewise_std_normalization=True,
-        # )
-        # print("printing the weights")
-        # print(compute_weight(dummytrainY, np.unique(dummytrainY)))
 
 
-        #training_generator, steps_per_epoch = BalancedBatchGenerator(trainX, trainY, batch_size=params['batch_size'], random_state = 42)
-        #
-        # model.fit_generator(generator=training_generator, steps_per_epoch = steps_per_epoch, epochs = params['epochs'], verbose = 0,
-        #                     callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
-        #                                 csv_logger, tensbd], validation_data=(valX, valY))
+    def objective(args, params=params):
+
+        from keras.losses import categorical_crossentropy
+        # for i in range(len(args)):
+        #     print(i)
+        for each in args:
+            print(each)
+        log_name = "hyperopt"+ '_' + str(datetime.now()).replace(':', '-')
+        model_dir = os.path.join(os.getcwd(), '..', 'models').replace('\\', '/')
+        fold_dir = os.path.join(os.getcwd(), '..', 'data').replace('\\', '/')
+        log_dir = os.path.join(os.getcwd(), '..', 'logs').replace('\\', '/')
+
+        model_dir = os.path.join(os.getcwd(), '..', 'models').replace('\\', '/')
+        fold_dir = os.path.join(os.getcwd(), '..', 'data').replace('\\', '/')
+        log_dir = os.path.join(os.getcwd(), '..', 'logs').replace('\\', '/')
 
 
-        flow = datagen.flow(trainX, [trainY, trainDom], target_label=1, batch_size=params['batch_size'], shuffle=True, seed=params['random_seed'])
-        model.fit_generator(flow,
-                            steps_per_epoch= len(trainDom[trainDom==0]) // flow.chunk_size,
-                            # steps_per_epoch=4,
-                            epochs=params['epochs'],
-                            validation_data=(valX, [valY,valDom]),
-                            #validation_data=valgen.flow(valX, valY, batch_size=params['batch_size'],
-                            #                            seed=params['random_seed']),
-                            callbacks=[modelcheckpnt, log_metrics(valX, [valY, valDom], pat_val, patlogDirectory, global_epoch_counter),
-                                       csv_logger, tensbd, lrate],
-                            #class_weight=params['class_weight']
-                            )
+        if not os.path.exists(os.path.join(model_dir, log_name).replace('\\', '/')):
+            new_dir = (os.path.join(model_dir, log_name).replace('\\', '/'))
+            print(new_dir)
+            os.makedirs(new_dir)
+        if not os.path.exists(os.path.join(log_dir, log_name).replace('\\', '/')):
+            new_dir = os.path.join(log_dir, log_name).replace('\\', '/')
+            print(new_dir)
+            os.makedirs(new_dir)
 
-        #
-        # model.fit(trainX, trainY, validation_data=(valX, valY),
-        #        callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter), csv_logger, tensbd],
-        #       batch_size=64, epochs=params['epochs'])
+        checkpoint_name = os.path.join(model_dir, log_name, 'weights.{epoch:04d}-{val_clf_acc:.4f}.hdf5').replace('\\',
+                                                                                                                  '/')
 
-        # model.fit(trainX[:64], [trainY[:64],trainDom[:64]], batch_size=params['batch_size'],
-        #                     shuffle=True,
-        #                     # seed=params['random_seed'],
-        #                     # steps_per_epoch=4,
-        #                     # epochs=params['epochs'],
-        #                     epochs=params['epochs'],
-        #                     validation_data=(valX, [valY,valDom]),
-        #                     callbacks=[modelcheckpnt,
-        #                                # log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
-        #                                log_metrics(valX, [valY,valDom], pat_val, patlogDirectory, global_epoch_counter),
-        #                                csv_logger, tensbd, lrate],
-        #                     # class_weight=params['class_weight']
-        #           )
+        results_file = os.path.join(os.getcwd(), '..', 'results.csv').replace('\\', '/')
 
-        # results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
+        params['dropout_rate'] = args[1]
+        params['lr'] = args[2]
+        params['hp_lambda'] = args[0]
 
-    except KeyboardInterrupt:
-        print("Keyboard Interrupt")
-        results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
+        # params = {
+        #     'dropout_rate': args[1],  # 0.45, #.5
+        #     'lr': args[2],  # .0001
+        #     'hp_lambda': args[0],
+        # }
+        current_learning_rate = params['lr']
+
+        model.compile(
+            optimizer=opt(lr=params['lr'], epsilon=None, decay=params['lr_decay']),
+            loss={'clf': 'categorical_crossentropy', 'dsc': 'binary_crossentropy'},
+            metrics=['accuracy']
+        )
+
+
+
+
+
+        modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
+                                        monitor='val_clf_acc', save_best_only=True, mode='max')
+        print("model Checkpoints: Loaded")
+        tensdir = log_dir + "/" + "hyperopt-{}".format(args) + "/"
+        tensdir = tensdir.replace('/', "\\")
+        tensbd = TensorBoard(log_dir=tensdir, batch_size=batch_size, write_grads=True, )
+        print("Tensorboard initialization: Done")
+        patlogDirectory = log_dir + '/' + log_name + '/'
+        trainingCSVdirectory = log_dir + '/' + log_name + '/' + 'training.csv'
+        csv_logger = CSVLogger(trainingCSVdirectory)
+        print("csv logger: Activated")
+        # if args.classweights:
+        #     params['class_weight'] = compute_weight(dummytrainY, np.unique(dummytrainY))
+        # else:
+        #     params['class_weight'] = dict(zip(np.r_[0:params['num_classes']], np.ones(params['num_classes'])))
+
+        print("model dot fit: Started")
+
+        def step_decay(global_epoch_counter):
+            lrate = params['lr']
+            # if global_epoch_counter>10:
+            #     lrate=params['lr']/10
+            #     if global_epoch_counter>20:
+            #         lrate=params['lr']/100
+            #         # if global_epoch_counter>30:
+            #         #     lrate=params['lr']/1000
+            return lrate
+
+        lrate = LearningRateScheduler(step_decay)
+
+        try:
+
+            datagen = BalancedAudioDataGenerator()
+
+            flow = datagen.flow(trainX, [trainY, trainDom], target_label=1, batch_size=params['batch_size'],
+                                shuffle=True, seed=params['random_seed'])
+            model.fit_generator(flow,
+                                steps_per_epoch=len(trainDom[trainDom == 0]) // flow.chunk_size,
+                                # steps_per_epoch=4,
+                                epochs=params['epochs'],
+                                validation_data=(valX, [valY, valDom]),
+
+                                callbacks=[modelcheckpnt, log_metrics(valX, [valY, valDom], pat_val, patlogDirectory,
+                                                                      global_epoch_counter),
+                                           csv_logger, tensbd, lrate],
+                                )
+
+
+
+        except KeyboardInterrupt:
+            print("Keyboard Interrupt")
+            results_log(results_file=results_file, log_dir=log_dir, log_name=log_name, params=params)
+
+        y_pred = model.predict(valX)[1]
+        loss = K.eval(K.mean(K.variable(K.eval(keras.loss.catagorical_crossentropy(K.variable(valDom), K.variable(y_pred))))))
+        loss = -loss
+        print(params)
+        # params['']
+        return loss
+
+    #from skopt.space import *
+    from hyperopt import hp, Trials, fmin, tpe
+    trials = Trials()
+    best = fmin(objective,
+                space=[hp.uniform('_hp_lambda', 0.001, 10),
+                hp.choice('_dropout', [0.35, 0.4, 0.45, 0.5]),
+                hp.uniform('_lr', 0.0001, .005)],
+                algo= tpe.suggest,
+                max_evals = 20,
+                trials = trials
+                )
+
+    print(best)
