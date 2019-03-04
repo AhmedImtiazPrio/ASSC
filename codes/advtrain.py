@@ -31,7 +31,7 @@ from advutils import *
 from AudioDataGenerator import BalancedAudioDataGenerator
 from flipGradientTF import GradientReversal
 from sklearn.preprocessing import StandardScaler
-
+import math
 
 import xgboost as xgb
 
@@ -67,6 +67,8 @@ if __name__ == '__main__':
                         help='the portion of s2 data to be reduced')
     parser.add_argument("--hp_lambda", type = float,
                         help = 'the update constant of the discriminator loss')
+    parser.add_argument("--gamma", type = float,
+                        help = 'the slope variable for hp_lambda sweep')
 
 
     args = parser.parse_args()
@@ -110,7 +112,7 @@ if __name__ == '__main__':
         print("harry potter lambda")
         hp_lambda = args.hp_lambda
     else:
-        hp_lambda = 1
+        hp_lambda = 2.3
 
     if args.verbose:
         verbose = args.verbose
@@ -138,6 +140,11 @@ if __name__ == '__main__':
         s2RedSize = args.s2RedSize
     else:
         s2RedSize = 0.
+    if args.gamma:
+        gamma = args.gamma
+    else:
+        gamma = 40.32
+        print("The value of Gamma is 40.32")
 
 
     model_dir = os.path.join(os.getcwd(),'..','models').replace('\\', '/')
@@ -154,8 +161,9 @@ if __name__ == '__main__':
         os.makedirs(new_dir)
     checkpoint_name = os.path.join(model_dir,log_name,'weights.{epoch:04d}-{val_clf_acc:.4f}.hdf5').replace('\\', '/')
 
-    results_file = os.path.join(os.getcwd(), '..', 'results.csv').replace('\\','/')
+#    results_file = os.path.join(os.getcwd(), '..', 'results.csv').replace('\\','/')
 
+    results_file  = "E:/SleepWell/ASSC/results.csv"
     params = {
 
         'num_classes': 5,
@@ -176,9 +184,10 @@ if __name__ == '__main__':
         'activation_function': 'relu',
         'subsam': 2,
         'trainable': True,
-        'lr': .001, #.0001
+        'lr': .0001, #.0001
         'lr_decay': 0.0, #1e-5, #1e-5
-        'hp_lambda': hp_lambda
+        'hp_lambda': 2.3, #hp_lambda
+        'gamma': gamma
     }
 
 
@@ -347,6 +356,61 @@ if __name__ == '__main__':
         return lrate
     lrate = LearningRateScheduler(step_decay)
 
+
+    def f_hp_decay(global_epoch_counter=global_epoch_counter, params=params):
+
+        print("global_epoch_counter")
+        print(global_epoch_counter)
+
+        gamma =  params['gamma']
+        p = (global_epoch_counter) / params['epochs']
+        hp_lambda =  (4 / (1 + 3*(math.e ** (- gamma * p)))) - 1  # 3 porjonto jaabe
+        # hp_lambda = hp_lambda * (params['hp_decay_const'] ** global_epoch_counter)
+        params['hp_lambda'] = hp_lambda
+        print(hp_lambda)
+        return hp_lambda
+
+
+    class hpRateScheduler(Callback):
+        """Learning rate scheduler.
+        # Arguments
+            schedule: a function that takes an epoch index as input
+                (integer, indexed from 0) and current learning rate
+                and returns a new learning rate as output (float).
+            verbose: int. 0: quiet, 1: update messages.
+        """
+
+        def __init__(self, schedule, params, verbose=0):
+            super(hpRateScheduler, self).__init__()
+            self.schedule = schedule
+            self.verbose = verbose
+            self.params = params
+
+        def on_epoch_begin(self, epoch, params=params, logs=None):
+            # if not hasattr(self.model.optimizer, 'hp_lambda'):
+            #     raise ValueError('Optimizer must have a "lr" attribute.')
+            #a = GradientReversal( hp_lambda = params['hp_lambda'])
+            hp_lambda = self.model.layers[-3].hp_lambda  # float(K.get_value(self.model.optimizer.lr))
+            try:  # new API
+                hp_lambda = self.schedule(epoch, hp_lambda)
+            except TypeError:  # old API for backward compatibility
+                hp_lambda = self.schedule(epoch)
+            if not isinstance(hp_lambda, (float, np.float32, np.float64)):
+                raise ValueError('The output of the "schedule" function '
+                                 'should be float.')
+            # K.set_value(self.model.layers[-3].hp_lambda, hp_lambda)
+            self.model.layers[-3].hp_lambda = hp_lambda
+            if self.verbose > 0:
+                print('\nEpoch %05d: HP setting hp_lambda '
+                      'rate to %s.' % (epoch + 1, hp_lambda))
+
+        def on_epoch_end(self, epoch, params=params, logs=None):
+            logs = logs or {}
+            logs['hp_lambda'] = hp_lambda
+
+
+    hprate = hpRateScheduler(f_hp_decay, params)
+
     try:
 
         datagen = BalancedAudioDataGenerator(
@@ -369,50 +433,31 @@ if __name__ == '__main__':
         #       samplewise_center=True,
         #       samplewise_std_normalization=True,
         # )
-        # print("printing the weights")
-        # print(compute_weight(dummytrainY, np.unique(dummytrainY)))
 
+        meta_labels = dummytrainY
+        print("meta_labels")
+        print(np.unique(meta_labels))
+        print(pat_train.shape)
+        for idx, each in enumerate(np.unique(dummytrainY)):
+           meta_labels[np.where(np.logical_and(np.asarray(pat_train[:,0]) >= 39, np.asarray(dummytrainY) == each))] = 5 + idx
 
-        #training_generator, steps_per_epoch = BalancedBatchGenerator(trainX, trainY, batch_size=params['batch_size'], random_state = 42)
-        #
-        # model.fit_generator(generator=training_generator, steps_per_epoch = steps_per_epoch, epochs = params['epochs'], verbose = 0,
-        #                     callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
-        #                                 csv_logger, tensbd], validation_data=(valX, valY))
-
-
-        flow = datagen.flow(trainX, [trainY, trainDom], target_label=1, batch_size=params['batch_size'], shuffle=True, seed=params['random_seed'])
+        flow = datagen.flow(trainX, [trainY, trainDom],
+                            meta_label=meta_labels,
+                            batch_size=params['batch_size'], shuffle=True, seed=params['random_seed'])
         model.fit_generator(flow,
-                            steps_per_epoch= len(trainDom[trainDom==0]) // flow.chunk_size,
-                            # steps_per_epoch=4,
+                            #steps_per_epoch= sum(np.asarray(meta_labels==9)) // flow.chunk_size,
+                             steps_per_epoch=1000,
                             epochs=params['epochs'],
                             validation_data=(valX, [valY,valDom]),
                             #validation_data=valgen.flow(valX, valY, batch_size=params['batch_size'],
                             #                            seed=params['random_seed']),
-                            callbacks=[modelcheckpnt, log_metrics(valX, [valY, valDom], pat_val, patlogDirectory, global_epoch_counter),
-                                       csv_logger, tensbd, lrate],
+                            callbacks=[modelcheckpnt, log_metrics(valX, [valY, valDom], pat_val, params, patlogDirectory, global_epoch_counter),
+                                       csv_logger, tensbd, lrate,
+                                       #hprate
+                                        ],
                             #class_weight=params['class_weight']
                             )
 
-        #
-        # model.fit(trainX, trainY, validation_data=(valX, valY),
-        #        callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter), csv_logger, tensbd],
-        #       batch_size=64, epochs=params['epochs'])
-
-        # model.fit(trainX[:64], [trainY[:64],trainDom[:64]], batch_size=params['batch_size'],
-        #                     shuffle=True,
-        #                     # seed=params['random_seed'],
-        #                     # steps_per_epoch=4,
-        #                     # epochs=params['epochs'],
-        #                     epochs=params['epochs'],
-        #                     validation_data=(valX, [valY,valDom]),
-        #                     callbacks=[modelcheckpnt,
-        #                                # log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
-        #                                log_metrics(valX, [valY,valDom], pat_val, patlogDirectory, global_epoch_counter),
-        #                                csv_logger, tensbd, lrate],
-        #                     # class_weight=params['class_weight']
-        #           )
-
-        # results_log(results_file=results_file, log_dir=log_dir, log_name= log_name, params=params)
 
     except KeyboardInterrupt:
         print("Keyboard Interrupt")

@@ -145,6 +145,9 @@ def eegnet(eeg_length=3000, kernel_size=16, bias=False, maxnorm=4., **kwargs):
     #inputs = K.placeholder(shape=(batch_size, eeg_length,1))
     #x = Input(dtype= 'float32', shape=(eeg_length,1))
     EEG_input = Input(shape=(eeg_length,1))
+
+
+
     x = Conv1D(filters=64, kernel_size=kernel_size, kernel_initializer=initializers.he_normal(seed=1), padding='same',
                use_bias=bias, kernel_constraint=max_norm(maxnorm))(EEG_input)  ##
     x = BatchNormalization(epsilon=eps, axis=-1)(x)
@@ -173,3 +176,66 @@ def eegnet(eeg_length=3000, kernel_size=16, bias=False, maxnorm=4., **kwargs):
     x = Model(EEG_input,x)
     # tf.keras.backend.eval(x)
     return x
+
+
+def adveegnet(eeg_length=3000, kernel_size=16, bias=False, maxnorm=4., **kwargs):
+    '''
+    Top model for the CNN
+    Add details of module in docstring
+        '''
+
+    eps = 1.1e-5
+
+    # inputs = K.placeholder(shape=(batch_size, eeg_length,1))
+    # x = Input(dtype= 'float32', shape=(eeg_length,1))
+    EEG_input = Input(shape=(eeg_length, 1, 1))
+
+
+    x = Conv1D(filters=64, kernel_size=kernel_size, kernel_initializer=initializers.he_normal(seed=1), padding='same',
+               use_bias=bias, kernel_constraint=max_norm(maxnorm))(EEG_input)  ##
+    x = BatchNormalization(epsilon=eps, axis=-1)(x)
+    x = Scale(axis=-1)(x)
+    x = Activation('relu')(x)  # ব্যাচ নরমালাইজ করা ভার্শন টা কে নিয়ে স্কেলের মধ্যে ঢুকানো
+
+    x = res_first(x, filters=[64, 64], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[64, 64], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[64, 64], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[64, 128], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[128, 128], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[128, 128], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[128, 128], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[128, 192], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[192, 192], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[192, 192], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[192, 192], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[192, 256], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[256, 256], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[256, 256], kernel_size=kernel_size, subsam=2)
+    x = res_nosub(x, filters=[256, 256], kernel_size=kernel_size)
+    x = res_subsam(x, filters=[256, 512], kernel_size=kernel_size, subsam=2)
+    x = BatchNormalization(epsilon=eps, axis=-1)(x)
+    x = Scale(axis=-1)(x)
+    x = Activation('relu')(x)
+    x = Model(EEG_input, x)
+    # tf.keras.backend.eval(x)
+    return x
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

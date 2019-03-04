@@ -110,7 +110,7 @@ def epoch_reduction(trainX, trainY, wakeRedSize=0.0, s2RedSize=0.0):
 
 
 class log_metrics( Callback):
-    def __init__(self, valX, valY, patID, patlogDirectory, global_epoch_counter, **kwargs):
+    def __init__(self, valX, valY, patID, patlogDirectory, global_epoch_counter, params, **kwargs):
 
         self.patID = patID
         super(log_metrics,self).__init__(**kwargs)
@@ -122,6 +122,7 @@ class log_metrics( Callback):
         if valY[1].ndim == 2:
             valY[1] = np.argmax(valY[1], axis=-1)
         self.valDom = valY[1]
+        self.params = params
 
     ########### Only activated when Using Data Generator #################################
         # self.valX = valX - np.mean(valX, keepdims=True)
@@ -241,5 +242,26 @@ class log_metrics( Callback):
             t = K.cast(self.model.optimizer.iterations, K.floatx()) + 1
             lr_t = lr * (K.sqrt(1. - K.pow(self.model.optimizer.beta_2, t)) / (1. - K.pow(self.model.optimizer.beta_1, t)))
             logs['lr'] = np.array(float(K.get_value(lr_t)))
+            logs['hp_lambda'] = self.model.layers[-3].hp_lambda
             #logs['lr'] = self.model.optimizer.lr
+
+
+
+
+
+from flipGradientTF import *
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

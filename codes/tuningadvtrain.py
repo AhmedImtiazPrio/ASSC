@@ -30,8 +30,9 @@ from hyperopt import hp, Trials, fmin, tpe
 from modules import *
 from advutils import *
 from AudioDataGenerator import BalancedAudioDataGenerator
-from flipGradientTF import GradientReversal
+from flipGradientTF import *
 from sklearn.preprocessing import StandardScaler
+import math
 
 
 import xgboost as xgb
@@ -111,7 +112,7 @@ if __name__ == '__main__':
         print("harry potter lambda")
         hp_lambda = args.hp_lambda
     else:
-        hp_lambda = 1
+        hp_lambda = 1.0
 
     if args.verbose:
         verbose = args.verbose
@@ -163,9 +164,10 @@ if __name__ == '__main__':
             'activation_function': 'relu',
             'subsam': 2,
             'trainable': True,
-            'lr': .001, #.0001
+            'lr': .0001, #.0001
             'lr_decay': 0.0, #1e-5, #1e-5
-            'hp_lambda':  hp_lambda
+            'hp_lambda':  hp_lambda,
+            'hp_decay_const' : 0.5
             }
 
 
@@ -254,6 +256,7 @@ if __name__ == '__main__':
     eps = 1.1e-5
 
 
+
     #### adverse-surreal
     # log_name = foldname + '_' + str(datetime.now()).replace(':', '-')
     # # model_dir = os.path.join(os.getcwd(), '..', 'models').replace('\\', '/')
@@ -264,22 +267,7 @@ if __name__ == '__main__':
     # fold_dir = os.path.join(os.getcwd(), '..', 'data').replace('\\', '/')
     # # log_dir = os.path.join(os.getcwd(), '..', 'logs').replace('\\', '/')
 
-    K.clear_session()
-    top_model = eegnet(**params)
-    x = Flatten()(top_model.output)
 
-    clf = Dense(params['num_classes'], activation='softmax',
-                kernel_initializer=initializers.he_normal(seed=random_seed),
-                name='clf',
-                use_bias=True)(x)
-
-    dann_in = GradientReversal(hp_lambda=params['hp_lambda'])(x)
-    dsc = Dense(1, activation='sigmoid',
-                kernel_initializer=initializers.he_normal(seed=random_seed),
-                name='dsc',
-                use_bias=True)(dann_in)
-
-    model = Model(top_model.input, [clf,dsc])
     # model.summary()
     # if load_path:
     #     model.load_weights(filepath=load_path, by_name=False)
@@ -288,8 +276,46 @@ if __name__ == '__main__':
     #     json_file.write(model_json)
 
 
+# GradientReversal.
+# #    print("model compilation: Done")
 
-    print("model compilation: Done")
+
+    class hpRateScheduler(Callback):
+        """Learning rate scheduler.
+        # Arguments
+            schedule: a function that takes an epoch index as input
+                (integer, indexed from 0) and current learning rate
+                and returns a new learning rate as output (float).
+            verbose: int. 0: quiet, 1: update messages.
+        """
+
+        def __init__(self, schedule, params, verbose=0):
+            super(hpRateScheduler, self).__init__()
+            self.schedule = schedule
+            self.verbose = verbose
+            self.params = params
+
+        def on_epoch_begin(self, epoch, logs=None):
+            # if not hasattr(self.model.optimizer, 'hp_lambda'):
+            #     raise ValueError('Optimizer must have a "lr" attribute.')
+            #a = GradientReversal( hp_lambda = params['hp_lambda'])
+            hp_lambda = self.model.layers[-3].hp_lambda  # float(K.get_value(self.model.optimizer.lr))
+            try:  # new API
+                hp_lambda = self.schedule(epoch, hp_lambda)
+            except TypeError:  # old API for backward compatibility
+                hp_lambda = self.schedule(epoch)
+            if not isinstance(hp_lambda, (float, np.float32, np.float64)):
+                raise ValueError('The output of the "schedule" function '
+                                 'should be float.')
+            # K.set_value(self.model.layers[-3].hp_lambda, hp_lambda)
+            self.model.layers[-3].hp_lambda = hp_lambda
+            if self.verbose > 0:
+                print('\nEpoch %05d: HP setting hp_lambda '
+                      'rate to %s.' % (epoch + 1, hp_lambda))
+
+        def on_epoch_end(self, epoch, logs=None):
+            logs = logs or {}
+            logs['hp_lambda'] = self.model.layers[-3].hp_lambda
 
 
     def objective(args, params=params):
@@ -297,8 +323,8 @@ if __name__ == '__main__':
         from keras.losses import categorical_crossentropy
         # for i in range(len(args)):
         #     print(i)
-        for each in args:
-            print(each)
+        #for each in args:
+        #    print(each)
         log_name = "hyperopt"+ '_' + str(datetime.now()).replace(':', '-')
         model_dir = os.path.join(os.getcwd(), '..', 'models').replace('\\', '/')
         fold_dir = os.path.join(os.getcwd(), '..', 'data').replace('\\', '/')
@@ -323,9 +349,10 @@ if __name__ == '__main__':
 
         results_file = os.path.join(os.getcwd(), '..', 'results.csv').replace('\\', '/')
 
-        params['dropout_rate'] = args[1]
-        params['lr'] = args[2]
-        params['hp_lambda'] = args[0]
+        #params['dropout_rate'] = args[1]
+        #params['lr'] = args[2]
+        #params['hp_lambda'] = args[0]
+
 
         # params = {
         #     'dropout_rate': args[1],  # 0.45, #.5
@@ -333,6 +360,28 @@ if __name__ == '__main__':
         #     'hp_lambda': args[0],
         # }
         current_learning_rate = params['lr']
+
+        K.clear_session()
+        top_model = eegnet(**params)
+        x = Flatten()(top_model.output)
+
+        clf = Dense(params['num_classes'], activation='softmax',
+                    kernel_initializer=initializers.he_normal(seed=random_seed),
+                    name='clf',
+                    use_bias=True)(x)
+
+        dann_in = GradientReversal(hp_lambda=params['hp_lambda'])(x)
+        dsc = Dense(1, activation='sigmoid',
+                    kernel_initializer=initializers.he_normal(seed=random_seed),
+                    name='dsc',
+                    use_bias=True)(dann_in)
+
+        model = Model(top_model.input, [clf, dsc])
+
+
+
+
+
 
         model.compile(
             optimizer=opt(lr=params['lr'], epsilon=None, decay=params['lr_decay']),
@@ -364,15 +413,32 @@ if __name__ == '__main__':
 
         def step_decay(global_epoch_counter):
             lrate = params['lr']
-            # if global_epoch_counter>10:
-            #     lrate=params['lr']/10
-            #     if global_epoch_counter>20:
-            #         lrate=params['lr']/100
-            #         # if global_epoch_counter>30:
-            #         #     lrate=params['lr']/1000
+            # if global_epoch_counter > 10:
+            #     lrate = params['lr'] / 10
+            #     if global_epoch_counter > 20:
+            #         lrate = params['lr'] / 100
+                    # if global_epoch_counter>30:
+                    #     lrate=params['lr']/1000
             return lrate
 
         lrate = LearningRateScheduler(step_decay)
+
+        params['gamma'] = args
+        #
+        def f_hp_decay(global_epoch_counter=global_epoch_counter, params=params):
+
+            print("global_epoch_counter")
+            print(global_epoch_counter)
+
+
+            gamma = params['gamma']
+            p = (global_epoch_counter -1) / params['epochs']
+            hp_lambda = ( 2/ (1 + (math.e ** (- gamma* p))) ) -1
+            #hp_lambda = hp_lambda * (params['hp_decay_const'] ** global_epoch_counter)
+            params['hp_lambda'] = hp_lambda
+            return hp_lambda
+
+        hprate = hpRateScheduler(f_hp_decay, params)
 
         try:
 
@@ -382,13 +448,14 @@ if __name__ == '__main__':
                                 shuffle=True, seed=params['random_seed'])
             model.fit_generator(flow,
                                 steps_per_epoch=len(trainDom[trainDom == 0]) // flow.chunk_size,
-                                # steps_per_epoch=4,
+                                #steps_per_epoch=4,
                                 epochs=params['epochs'],
                                 validation_data=(valX, [valY, valDom]),
 
                                 callbacks=[modelcheckpnt, log_metrics(valX, [valY, valDom], pat_val, patlogDirectory,
-                                                                      global_epoch_counter),
-                                           csv_logger, tensbd, lrate],
+                                                                      global_epoch_counter, params),
+                                           csv_logger, tensbd, lrate, hprate,
+                                 ],
                                 )
 
 
@@ -398,7 +465,8 @@ if __name__ == '__main__':
             results_log(results_file=results_file, log_dir=log_dir, log_name=log_name, params=params)
 
         y_pred = model.predict(valX)[1]
-        loss = K.eval(K.mean(K.variable(K.eval(keras.loss.catagorical_crossentropy(K.variable(valDom), K.variable(y_pred))))))
+        print("y pred worked")
+        loss = K.eval(K.mean(K.variable(K.eval(keras.losses.categorical_crossentropy(K.variable(valDom), K.variable(y_pred))))))
         loss = -loss
         print(params)
         # params['']
@@ -408,11 +476,12 @@ if __name__ == '__main__':
     from hyperopt import hp, Trials, fmin, tpe
     trials = Trials()
     best = fmin(objective,
-                space=[hp.uniform('_hp_lambda', 0.001, 10),
-                hp.choice('_dropout', [0.35, 0.4, 0.45, 0.5]),
-                hp.uniform('_lr', 0.0001, .005)],
+                space=hp.uniform('gamma', 1, 50),
+                #[hp.uniform('_hp_lambda', 0.001, 10),
+                #hp.choice('_dropout', [0.35, 0.4, 0.45, 0.5]),
+                #hp.uniform('_lr', 0.0001, .001)],
                 algo= tpe.suggest,
-                max_evals = 20,
+                max_evals = 8,
                 trials = trials
                 )
 
