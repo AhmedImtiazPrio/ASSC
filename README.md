@@ -18,6 +18,7 @@ Download and create *.csv* files containing EEG Data and hypnogram annotations, 
 ***data points (columns 0-2999) | hypnogram annotation | epoch ID | recording ID***
 
 recording ID: Recording filename, i.e `SC4192E0-PSG` or `ST7011J0-PSG`
+
 epoch ID: The index of an epoch within a recording file
 
 Use the train.py file to train the proposed Resnet-34 Architecture for end-to-end sleep staging. Specify the **.csv** channel file to use from the data and the number of sleep stages to use (5 or 6).
