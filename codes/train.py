@@ -56,14 +56,6 @@ if __name__ == '__main__':
                         help="if True, class weights are added")
     parser.add_argument("--comment",
                         help="Add comments to the log files")
-    parser.add_argument("--wakeReduction", type =bool,
-                        help="Reduces wake class by a given percentage")
-    parser.add_argument("--s2Reduction", type = bool,
-                        help="Reduces s1 class by a given percentage")
-    parser.add_argument("--wakeRedSize", type=float,
-                        help='the portion of wake data to be reduced')
-    parser.add_argument("--s2RedSize", type= float,
-                        help='the portion of s2 data to be reduced')
 
 
     args = parser.parse_args()
@@ -232,8 +224,7 @@ if __name__ == '__main__':
                             epochs=params['epochs'],
                             validation_data=valgen.flow(valX, valY, batch_size=params['batch_size'],
                                                         seed=params['random_seed']),
-                            callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
-                                       csv_logger, tensbd, lrate],
+                            callbacks=[modelcheckpnt,csv_logger, tensbd, lrate],
                             class_weight=params['class_weight']
                             )
 
