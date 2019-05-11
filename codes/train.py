@@ -56,14 +56,6 @@ if __name__ == '__main__':
                         help="if True, class weights are added")
     parser.add_argument("--comment",
                         help="Add comments to the log files")
-    parser.add_argument("--wakeReduction", type =bool,
-                        help="Reduces wake class by a given percentage")
-    parser.add_argument("--s2Reduction", type = bool,
-                        help="Reduces s1 class by a given percentage")
-    parser.add_argument("--wakeRedSize", type=float,
-                        help='the portion of wake data to be reduced')
-    parser.add_argument("--s2RedSize", type= float,
-                        help='the portion of s2 data to be reduced')
 
 
     args = parser.parse_args()
@@ -115,14 +107,6 @@ if __name__ == '__main__':
         comment = args.comment
     else:
         comment = None
-    if args.wakeReduction:
-        wakeReduction = args.wakeReduction
-    if args.s2Reduction:
-        s2Reduction = args.s2Reduction
-    if args.wakeRedSize:
-        wakeRedSize = args.wakeRedSize
-    if args.s2RedSize:
-        s2RedSize = args.s2RedSize
 
 
     model_dir = os.path.join(os.getcwd(),'..','models').replace('\\', '/')
@@ -170,49 +154,21 @@ if __name__ == '__main__':
 
     current_learning_rate= params['lr']
 
-    df2 = pd.read_csv(os.path.join(fold_dir,foldname).replace('\\', '/'), header=None)
-    df2.rename({3000: 'hyp', 3001: 'epoch', 3002: 'patID'}, axis="columns", inplace=True)
-    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter('casetteID.csv', df2, 0.7, 39)
+    df = pd.read_csv(os.path.join(fold_dir,foldname).replace('\\', '/'), header=None)
+    trainX, valX, trainY, valY, pat_train, pat_val = patientSplitter(df,task='RS',stages=params['num_classes'])
+    del df
 
-################# Making 5 Class Data ############################
+    print("Data loaded")
+    
+    if args.classweights:
+        params['class_weight'] = compute_weight(trainY.astype(int), np.unique(trainY.astype(int)))
+    else:
+        params['class_weight'] = dict(zip(np.r_[0:params['num_classes']], np.ones(params['num_classes'])))
 
-    if num_class == 5:
-
-        for i in range(1, len(valY) + 1):
-            if int(valY[i - 1]) == 4:
-                valY[i - 1] = 3
-        for j in range(1, len(valY) + 1):
-            if int(valY[j - 1]) == 5:
-                valY[j - 1] = 4
-        for i in range(1, len(valY) + 1):
-            if int(valY[i - 1]) == 6:
-                valY[i - 1] = 5
-
-        for i in range(1, len(trainY) + 1):
-            if int(trainY[i - 1]) == 4:
-                trainY[i - 1] = 3
-        for j in range(1, len(trainY) + 1):
-            if int(trainY[j - 1]) == 5:
-                trainY[j - 1] = 4
-        for i in range(1, len(trainY) + 1):
-            if int(trainY[i - 1]) == 6:
-                trainY[i - 1] = 5
-
-####################################################################
-
-    del df2
-
-    trainX, trainY = epoch_reduction(trainX, trainY, 5,
-                                     wakeReduction, wakeRedSize,
-                                     s2Reduction, s2RedSize)
-
-    print("Dataframe has been loaded")
-    dummytrainY = trainY-1
-    dummytrainY = dummytrainY.astype(int)
-
-    print(Counter(trainY))
-    trainY = to_categorical(trainY-1, params['num_classes'])
-    valY = to_categorical(valY-1, params['num_classes'])
+    print('Classwise data in train',Counter(trainY))
+	
+    trainY = to_categorical(trainY)
+    valY = to_categorical(valY)
     trainX = np.expand_dims(trainX,axis=-1)
     valX = np.expand_dims(valX, axis=-1)
 
@@ -236,7 +192,7 @@ if __name__ == '__main__':
     ####### Callbacks #######
 
     modelcheckpnt = ModelCheckpoint(filepath=checkpoint_name,
-                                    monitor='val_acc', save_best_only=False, mode='max')
+                                    monitor='val_acc', save_best_only=True, mode='max')
 
     tensdir = log_dir + "/" + log_name + "/"
     tensdir = tensdir.replace('/', "\\")
@@ -245,10 +201,6 @@ if __name__ == '__main__':
     trainingCSVdirectory = log_dir +'/'+ log_name +'/'+ 'training.csv'
     csv_logger = CSVLogger(trainingCSVdirectory)
 
-    if args.classweights:
-        params['class_weight'] = compute_weight(dummytrainY, np.unique(dummytrainY))
-    else:
-        params['class_weight'] = dict(zip(np.r_[0:params['num_classes']], np.ones(params['num_classes'])))
 
     ####### Training #########
 
@@ -268,13 +220,11 @@ if __name__ == '__main__':
         )
 
         model.fit_generator(datagen.flow(trainX, trainY, batch_size=params['batch_size'], shuffle=True, seed=params['random_seed']),
-                            # steps_per_epoch=len(trainX) // params['batch_size'],
-                            steps_per_epoch=4,
+                            steps_per_epoch=len(trainX) // params['batch_size'],
                             epochs=params['epochs'],
                             validation_data=valgen.flow(valX, valY, batch_size=params['batch_size'],
                                                         seed=params['random_seed']),
-                            callbacks=[modelcheckpnt, log_metrics(valX, valY, pat_val, patlogDirectory, global_epoch_counter),
-                                       csv_logger, tensbd, lrate],
+                            callbacks=[modelcheckpnt,csv_logger, tensbd, lrate],
                             class_weight=params['class_weight']
                             )
 

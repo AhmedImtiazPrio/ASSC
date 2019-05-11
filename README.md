@@ -15,13 +15,15 @@ bash bulkdownload.sh
 
 Download and create *.csv* files containing EEG Data and hypnogram annotations, place them in the *data* sub-folder. The *.csv* files should have ***rows = number of 30s data epochs***. Columns should have a size of 3003 and arranged as:
 
-***data points (columns 1-3000) | hypnogram annotation | epoch ID | recording ID***
+***data points (columns 0-2999) | hypnogram annotation | epoch ID | recording ID***
 
-Recording IDs are renamed from 1-61. 
+recording ID: Recording filename, i.e `SC4192E0-PSG` or `ST7011J0-PSG`
+
+epoch ID: The index of an epoch within a recording file
 
 Use the train.py file to train the proposed Resnet-34 Architecture for end-to-end sleep staging. Specify the **.csv** channel file to use from the data and the number of sleep stages to use (5 or 6).
 ```
-python train.py FpzCz.csv 5 --epochs 200 --batch_size 64
+python train.py FpzCz.csv --num_class 5 --epochs 200 --batch_size 64
 ```
 
-#### For issues contact sushmit0109@gmail.com
+#### Repo still under development. For issues contact ahmed.imtiaz.prio@gmail.com

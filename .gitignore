@@ -6,3 +6,5 @@ codes/.idea/*
 models/*
 logs/*
 data/*
+!data/dummy.csv
+codes/__pycache__/*

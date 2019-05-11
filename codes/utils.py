@@ -1,9 +1,4 @@
 from __future__ import print_function, absolute_import, division
-import tensorflow as tf
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.9
-# set_session(tf.Session(config=config))
 import numpy as np
 np.random.seed(1)
 from tensorflow import set_random_seed
@@ -53,34 +48,21 @@ def compute_weight(Y, classes):
     class_weights = {i: (num_samples / (n_classes * num_bin[i])) for i in range(5)}
     return class_weights
 
-def patientSplitter(randomIDfile,df2,split_portion, totalPat = 61):
-    import pandas as pd
-
-    df1 = pd.read_csv(randomIDfile,header=None)
-    split_portion_numer=int(split_portion*totalPat)
-
-    train_pat_list = [int(each) for each in df1.iloc[:split_portion_numer].values]
-    test_pat_list = [int(each) for each in df1.iloc[split_portion_numer:].values]
-    print(test_pat_list)
-    df3 = []
-    df4 = []
-    for pat_ID in train_pat_list:
-        df3.append(df2[df2.patID == pat_ID].values)
-        print(pat_ID)
-    for pat_ID in test_pat_list:
-        df4.append(df2[df2.patID == pat_ID].values)
-        print(pat_ID)
-    del df2
-    df3 = pd.np.vstack(df3)
-    df4 = pd.np.vstack(df4)
-    X_train = df3[:, :3000]
-    X_test= df4[:, :3000]
-    Y_train= df3[:,3000]
-    Y_test= df4[:,3000]
-    pat_train=df3[:, 3002:3003]
-    pat_test= df4[:, 3002:3003]
-
-    del pd
+def patientSplitter(data,task='SC',stages=5):
+	
+    trainFile = os.path.join('..','benchmark',task+'_train.csv').replace('\\', '/')
+    testFile = os.path.join('..','benchmark',task+'_test.csv').replace('\\', '/')
+    df = pd.read_csv(trainFile,header=None)
+    trainMask = np.asarray([each in df[0].values for each in data[3002]])
+    df = pd.read_csv(testFile,header=None)
+    testMask = np.asarray([each in df[0].values for each in data[3002]])
+	
+    X_train = data[trainMask].values[:,:3000]
+    X_test= data[testMask].values[:,:3000]
+    Y_train= data[3000][trainMask].values
+    Y_test= data[3000][testMask].values
+    pat_train=[int(each[2:5]) for each in data[3002][trainMask].values]
+    pat_test= [int(each[2:5]) for each in data[3002][testMask].values]
     return X_train,X_test,Y_train,Y_test,pat_train,pat_test
 
 def results_log(results_file, log_dir, log_name, params):
@@ -97,44 +79,7 @@ def results_log(results_file, log_dir, log_name, params):
     print("saving results to csv")
 
 
-def epoch_reduction(trainX, trainY, num_class=5, wakeReduction=False, wakeRedSize=0.0,
-                    s2Reduction=False, s2RedSize=0.0):
-
-    if num_class == 5:
-        if wakeReduction:
-            mask = trainY == 5
-            wakeidx = np.nonzero(mask)[0]
-            dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * wakeRedSize), replace=False)
-            trainX = np.delete(trainX, dropidx, axis=0)
-            trainY = np.delete(trainY, dropidx, axis=0)
-
-        if s2Reduction:
-            mask = trainY == 2
-            wakeidx = np.nonzero(mask)[0]
-            dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * s2RedSize), replace=False)
-            trainX = np.delete(trainX, dropidx, axis=0)
-            trainY = np.delete(trainY, dropidx, axis=0)
-
-    else:
-
-        if wakeReduction:
-            mask = trainY == 6
-            wakeidx = np.nonzero(mask)[0]
-            dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * wakeRedSize), replace=False)
-            trainX = np.delete(trainX, dropidx, axis=0)
-            trainY = np.delete(trainY, dropidx, axis=0)
-
-        if s2Reduction:
-            mask = trainY == 2
-            wakeidx = np.nonzero(mask)[0]
-            dropidx = np.random.choice(wakeidx, size=int(wakeidx.shape[0] * s2RedSize), replace=False)
-            trainX = np.delete(trainX, dropidx, axis=0)
-            trainY = np.delete(trainY, dropidx, axis=0)
-
-    return trainX, trainY
-
-
-class log_metrics( Callback):
+class log_metrics(Callback):
     def __init__(self, valX, valY, patID, patlogDirectory, global_epoch_counter, **kwargs):
 
         self.patID = patID
